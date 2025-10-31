@@ -4,7 +4,7 @@
 #include "tkjhat/sdk.h"
 #include <stdio.h>
 
-void vSensorTask(void *pvParameters) {
+void sensorTask(void *pvParameters) {
     // Initialize IMU
     if (init_ICM42670() != 0) {
         printf("IMU init failed\r\n");
