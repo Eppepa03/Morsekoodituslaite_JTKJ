@@ -4,3 +4,6 @@
 #include "task.h"
 #include "tusb.h"
 
+static void usbTask(void *arg) {
+    (void)arg;
+}

@@ -21,8 +21,11 @@ int main(void) {
     symbolQ = xQueueCreate(64, sizeof(symbol_ev_t));
     configASSERT(symbolQ != NULL);
 
+    // Create Usb task
+    TaskHandle_t handle_usb;
+    xTaskCreate(usbTask, "usb", 1024, NULL, 3, &handle_usb);
+
     // Create Sensor Task
-    // xTaskCreate(usbTask, "usb", 1024, NULL, 3, &hUsb);
     xTaskCreate(sensorTask, "Sensor", 1024, NULL, 1, NULL);
     
 
