@@ -1,2 +1,2 @@
 #pragma once
-void vSensorTask(void *pvParameters);
+void sensorTask(void *pvParameters);

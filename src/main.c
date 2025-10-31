@@ -6,6 +6,10 @@
 #include "queue.h"
 #include "sensor_task.h"
 #include "usb_task.h"
+#include "queue.h"
+#include "event.h"
+
+QueueHandle_t symbolQ;
 
 int main(void) {
     stdio_init_all();
@@ -14,9 +18,12 @@ int main(void) {
     init_hat_sdk();
     init_i2c_default();
 
+    symbolQ = xQueueCreate(64, sizeof(symbol_ev_t));
+    configASSERT(symbolQ != NULL);
+
     // Create Sensor Task
     // xTaskCreate(usbTask, "usb", 1024, NULL, 3, &hUsb);
-    xTaskCreate(vSensorTask, "Sensor", 1024, NULL, 1, NULL);
+    xTaskCreate(sensorTask, "Sensor", 1024, NULL, 1, NULL);
     
 
     // Start FreeRTOS
