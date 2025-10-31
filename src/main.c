@@ -3,7 +3,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "tkjhat/sdk.h"
+#include "queue.h"
 #include "sensor_task.h"
+#include "usb_task.h"
 #include "queue.h"
 #include "event.h"
 
@@ -20,7 +22,9 @@ int main(void) {
     configASSERT(symbolQ != NULL);
 
     // Create Sensor Task
+    // xTaskCreate(usbTask, "usb", 1024, NULL, 3, &hUsb);
     xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
+    
 
     // Start FreeRTOS
     vTaskStartScheduler();
