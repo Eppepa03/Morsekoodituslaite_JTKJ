@@ -3,6 +3,11 @@
 #include "task.h"
 #include "tkjhat/sdk.h"
 #include <stdio.h>
+#include "event.h"
+#include "queue.h"
+
+extern QueueHandle_t symbolQ;
+
 
 void sensorTask(void *pvParameters) {
     // Initialize IMU
@@ -20,16 +25,22 @@ void sensorTask(void *pvParameters) {
       while (1) {
         float ax, ay, az, gx, gy, gz, temp;
 
-        if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &temp) == 0) {
-            printf("ACC[g]: x=%.2f y=%.2f z=%.2f | "
-                   "GYRO[dps]: x=%.2f y=%.2f z=%.2f | "
-                   "TEMP: %.2f C\r\n",
-                   ax, ay, az, gx, gy, gz, temp);
-        } else {
-            printf("IMU read failed\r\n");
+        symbol_ev_t ev;
+
+        // --- VERY SIMPLE TEST LOGIC ---
+        // Assume board held flat = dot
+        // Tilted forward/back = dash
+        if (fabsf(az) > 0.9f && fabsf(ax) < 0.2f && fabsf(ay) < 0.2f) {
+            ev = DOT;
+            xQueueSend(symbolQ, &ev, 0);
+            printf(". (dot)\n");
+        } 
+        else if (fabsf(ax) > 0.9f && fabsf(ay) < 0.2f && fabsf(az) < 0.5f) {
+            ev = DASH;
+            xQueueSend(symbolQ, &ev, 0);
+            printf("- (dash)\n");
         }
 
-        vTaskDelay(pdMS_TO_TICKS(500)); // every 500 ms
+        vTaskDelay(pdMS_TO_TICKS(500));  // sample every 0.5s
     }
 }
-

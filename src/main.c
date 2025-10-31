@@ -20,7 +20,7 @@ int main(void) {
     configASSERT(symbolQ != NULL);
 
     // Create Sensor Task
-    xTaskCreate(sensorTask, "Sensor", 1024, NULL, 1, NULL);
+    xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
 
     // Start FreeRTOS
     vTaskStartScheduler();
