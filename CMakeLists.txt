@@ -107,6 +107,7 @@ add_subdirectory(libs/usb-serial-debug) #TODO
 # If you add the headers in a different directory, you should use: target_include_directories
 add_executable(${MAIN_TARGET}
     src/main.c
+    src/sensor_task.c
     src/uart_comm.c
 )
 
