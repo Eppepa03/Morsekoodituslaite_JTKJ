@@ -108,7 +108,7 @@ add_subdirectory(libs/usb-serial-debug) #TODO
 add_executable(${MAIN_TARGET}
     src/main.c
     src/sensor_task.c
-    src/uart_comm.c
+    src/usb_task.c
 )
 
 # Links. Add all libraries that application is using. It must at least use the pico_stdlib

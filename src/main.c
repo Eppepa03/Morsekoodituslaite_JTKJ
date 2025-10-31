@@ -3,8 +3,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "tkjhat/sdk.h"
+#include "queue.h"
 #include "sensor_task.h"
-
+#include "usb_task.h"
 
 int main(void) {
     stdio_init_all();
@@ -14,7 +15,9 @@ int main(void) {
     init_i2c_default();
 
     // Create Sensor Task
+    // xTaskCreate(usbTask, "usb", 1024, NULL, 3, &hUsb);
     xTaskCreate(vSensorTask, "Sensor", 1024, NULL, 1, NULL);
+    
 
     // Start FreeRTOS
     vTaskStartScheduler();
