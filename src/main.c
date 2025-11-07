@@ -37,7 +37,7 @@ int main(void) {
     xTaskCreate(usbTask, "usb", 1024, NULL, 3, &handle_usb);
 
     // Create UI task
-    xTaskCreate(uiTask, "UI", 2048, NULL, 2, NULL);
+    xTaskCreate(ui_task, "UI", 2048, NULL, 2, NULL);
     
 
     // Start FreeRTOS
