@@ -119,7 +119,7 @@ static void draw_centered_string_scaled(ssd1306_t *disp, int y, int scale, const
     int x = (UI_OLED_W - w) / 2;
     if (x < 0)
         x = 0;
-    ssd1306_draw_string(disp, x, y, scale, txt, color);
+    ssd1306_draw_string(disp, x, y, scale, txt);
 }
 
 static void draw_header(ssd1306_t *disp, const char *txt) {
@@ -193,7 +193,7 @@ static void draw_centered_wrapped(ssd1306_t *disp, const char *txt, int max_scal
         int x = (UI_OLED_W - w) / 2;
         if (x < 0)
             x = 0;
-        ssd1306_draw_string(disp, x, y, scale, txt, color);
+        ssd1306_draw_string(disp, x, y, scale, txt);
         return;
     }
     int line_h = FONT_H * scale;
@@ -209,11 +209,11 @@ static void draw_centered_wrapped(ssd1306_t *disp, const char *txt, int max_scal
         if (x < 0)
             x = 0;
         int y = y0 + i * (line_h + vgap);
-        ssd1306_draw_string(disp, x, y, scale, lines[i], color);
+        ssd1306_draw_string(disp, x, y, scale, lines[i]);
     }
 }
 
-// --- Nappien käsittely ---
+// --- Napit ---
 
 static bool read_button_press(uint pin) {
     if (gpio_get(pin) == 0) {
@@ -227,7 +227,7 @@ static bool read_button_press(uint pin) {
     return false;
 }
 
-// Scroll napin tapahtumien tulkinta - single tai double click
+// Scroll napin tapahtumat (single/double click)
 static int poll_scroll_click_event(void) {
     static bool last_read_level = true;
     static bool stable_level = true;
@@ -252,11 +252,11 @@ static int poll_scroll_click_event(void) {
     }
 
     if (click_count >= 2) {
-        event = 2; // double-click
+        event = 2;
         click_count = 0;
     } else if (click_count == 1) {
         if ((now - last_release_ms) > UI_DOUBLE_CLICK_MS) {
-            event = 1; // single-click
+            event = 1;
             click_count = 0;
         }
     }
@@ -277,10 +277,10 @@ static void draw_ui(ssd1306_t *disp) {
             if (selected) {
                 draw_filled_rect(disp, 0, y_pos, UI_OLED_W, line_height, 1);
                 draw_menu_icon(disp, 4, y_pos, i, true);
-                ssd1306_draw_string(disp, 28, y_pos + 4, 1, main_items[i], 0);
+                ssd1306_draw_string(disp, 28, y_pos + 4, 1, main_items[i]);
             } else {
                 draw_menu_icon(disp, 4, y_pos, i, false);
-                ssd1306_draw_string(disp, 28, y_pos + 4, 1, main_items[i], 1);
+                ssd1306_draw_string(disp, 28, y_pos + 4, 1, main_items[i]);
             }
         }
     } else if (g_state == UI_STATE_CONNECT_MENU) {
@@ -291,24 +291,23 @@ static void draw_ui(ssd1306_t *disp) {
             bool selected = (i == sel_connect);
             if (selected) {
                 draw_filled_rect(disp, 0, y_pos, UI_OLED_W, line_height, 1);
-                ssd1306_draw_string(disp, 28, y_pos + 4, 1, connect_items[i], 0);
+                ssd1306_draw_string(disp, 28, y_pos + 4, 1, connect_items[i]);
             } else {
-                ssd1306_draw_string(disp, 28, y_pos + 4, 1, connect_items[i], 1);
+                ssd1306_draw_string(disp, 28, y_pos + 4, 1, connect_items[i]);
             }
         }
     } else if (g_state == UI_STATE_CONFIRM_SHUTDOWN) {
-        ssd1306_draw_string(disp, 10, 10, 1, "Are you sure?", 1);
+        ssd1306_draw_string(disp, 10, 10, 1, "Are you sure?");
         int start_y = 35;
         for (int i = 0; i < confirm_count; i++) {
             if (i == sel_confirm) {
                 draw_filled_rect(disp, 18, start_y + i * 12 - 2, 40, 12, 1);
-                ssd1306_draw_string(disp, 20, start_y + i * 12, 1, confirm_items[i], 0);
+                ssd1306_draw_string(disp, 20, start_y + i * 12, 1, confirm_items[i]);
             } else {
-                ssd1306_draw_string(disp, 20, start_y + i * 12, 1, confirm_items[i], 1);
+                ssd1306_draw_string(disp, 20, start_y + i * 12, 1, confirm_items[i]);
             }
         }
     }
-
     ssd1306_show(disp);
 }
 
@@ -331,17 +330,13 @@ static void perform_shutdown(ssd1306_t *disp) {
     ssd1306_show(disp);
     if (g_cbs.on_shutdown)
         g_cbs.on_shutdown();
-    // Sammutus kesken
 }
-
-// --- Julkiset funktiot ---
 
 void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs) {
     g_disp = disp;
     if (cbs)
         g_cbs = *cbs;
 
-    // Nappien (GPIO) asetukset
     gpio_init(UI_BTN_SCROLL_PIN);
     gpio_set_dir(UI_BTN_SCROLL_PIN, GPIO_IN);
     gpio_pull_up(UI_BTN_SCROLL_PIN);
@@ -369,9 +364,8 @@ void ui_menu_poll(void) {
     int scroll_evt = poll_scroll_click_event();
 
     if (g_state == UI_STATE_MAIN_MENU) {
-        if (scroll_evt == 1) {
+        if (scroll_evt == 1)
             sel_main = (sel_main + 1) % main_count;
-        }
         if (read_button_press(UI_BTN_SELECT_PIN)) {
             if (sel_main == 0) {
                 g_state = UI_STATE_CONNECT_MENU;
@@ -386,9 +380,8 @@ void ui_menu_poll(void) {
     } else if (g_state == UI_STATE_CONNECT_MENU) {
         if (scroll_evt == 2) {
             g_state = UI_STATE_MAIN_MENU;
-        } else if (scroll_evt == 1) {
+        } else if (scroll_evt == 1)
             sel_connect = (sel_connect + 1) % connect_count;
-        }
         if (read_button_press(UI_BTN_SELECT_PIN)) {
             if (sel_connect == 0) {
                 if (g_cbs.on_connect_usb)
@@ -401,17 +394,15 @@ void ui_menu_poll(void) {
             }
         }
     } else if (g_state == UI_STATE_CONFIRM_SHUTDOWN) {
-        if (scroll_evt == 2) {
+        if (scroll_evt == 2)
             g_state = UI_STATE_MAIN_MENU;
-        } else if (scroll_evt == 1) {
+        else if (scroll_evt == 1)
             sel_confirm = (sel_confirm + 1) % confirm_count;
-        }
         if (read_button_press(UI_BTN_SELECT_PIN)) {
-            if (sel_confirm == 0) {
+            if (sel_confirm == 0)
                 perform_shutdown(g_disp);
-            } else {
+            else
                 g_state = UI_STATE_MAIN_MENU;
-            }
         }
     }
 
@@ -421,19 +412,16 @@ void ui_menu_poll(void) {
     }
 }
 
-// Getterit tilojen tarkastamiseen (optionaaliset)
+// Getterit (valinnaiset)
 ui_state_t ui_menu_get_state(void) {
     return g_state;
 }
-
 int ui_menu_get_main_selection(void) {
     return sel_main;
 }
-
 int ui_menu_get_connect_selection(void) {
     return sel_connect;
 }
-
 int ui_menu_get_confirm_selection(void) {
     return sel_confirm;
 }
