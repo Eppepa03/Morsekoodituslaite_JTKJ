@@ -10,6 +10,8 @@
 #include "event.h"
 #include "button_task.h"
 
+extern void ui_task(void *params);
+
 QueueHandle_t symbolQ;
 
 int main(void) {
@@ -33,6 +35,9 @@ int main(void) {
     // Create Usb task
     TaskHandle_t handle_usb;
     xTaskCreate(usbTask, "usb", 1024, NULL, 3, &handle_usb);
+
+    // Create UI task
+    xTaskCreate(uiTask, "UI", 2048, NULL, 2, NULL);
     
 
     // Start FreeRTOS
