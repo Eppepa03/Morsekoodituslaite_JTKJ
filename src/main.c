@@ -9,8 +9,39 @@
 #include "queue.h"
 #include "event.h"
 #include "button_task.h"
+#include "tusb.h"
+
+#define CDC_ITF_TX 1
+#define BUFFER_SIZE 1024
 
 QueueHandle_t symbolQ;
+
+
+static void testTask(void *arg) {
+    char buf[BUFFER_SIZE];
+
+    while (!tud_mounted() || !tud_cdc_n_connected(1)) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    while (1) {
+        char test[] = "--.";
+        
+        int i;
+        char test_char;
+        for (i=0; i < strlen(test); i++) {
+            test_char = test[i];
+            if (tud_cdc_n_connected(CDC_ITF_TX)) {
+            // Sends data using tud_cdc_write
+            snprintf(buf, BUFFER_SIZE, "%c", test_char);
+            tud_cdc_n_write(CDC_ITF_TX, buf, strlen(buf));
+            tud_cdc_n_write_flush(CDC_ITF_TX);
+            }
+            vTaskDelay(pdMS_TO_TICKS(500));
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
 
 int main(void) {
     stdio_init_all();
@@ -22,6 +53,8 @@ int main(void) {
     symbolQ = xQueueCreate(64, sizeof(symbol_ev_t));
     configASSERT(symbolQ != NULL);
 
+    // Temporary test
+    xTaskCreate(testTask, "Test", 1024, NULL, 2, NULL);
 
     // Create Sensor Task
     xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
@@ -31,10 +64,16 @@ int main(void) {
     xTaskCreate(buttonTask, "Buttons", 1024, NULL, 1, NULL);
 
     // Create Usb task
-    TaskHandle_t handle_usb;
+    TaskHandle_t handle_usb = NULL;
     xTaskCreate(usbTask, "usb", 1024, NULL, 3, &handle_usb);
     
+    #if (configNUMBEROFCORES > 1)
+        vTaskCoreAffinitySet(handle_usb, 1u << 0);
+    #endif
 
+    // Initialize TinyUSB
+    tusb_init();
+        
     // Start FreeRTOS
     vTaskStartScheduler();
 

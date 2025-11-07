@@ -1,3 +1,3 @@
 #pragma once
 
-static void usbTask(void *arg);
+void usbTask(void *arg);
