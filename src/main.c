@@ -13,6 +13,8 @@
 
 #define CDC_ITF_TX 1
 #define BUFFER_SIZE 1024
+#include "ui_task.h"
+
 
 QueueHandle_t symbolQ;
 
@@ -66,14 +68,11 @@ int main(void) {
     // Create Usb task
     TaskHandle_t handle_usb = NULL;
     xTaskCreate(usbTask, "usb", 1024, NULL, 3, &handle_usb);
-    
-    #if (configNUMBEROFCORES > 1)
-        vTaskCoreAffinitySet(handle_usb, 1u << 0);
-    #endif
 
-    // Initialize TinyUSB
-    tusb_init();
-        
+    // Create UI task
+    xTaskCreate(ui_task, "UI", 2048, NULL, 2, NULL);
+    
+
     // Start FreeRTOS
     vTaskStartScheduler();
 
