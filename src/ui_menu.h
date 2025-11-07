@@ -1,7 +1,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
-#include "ssd1306.h"
+#include "tkjhat/ssd1306.h"
 
 #ifdef __cplusplus
 extern "C" {
