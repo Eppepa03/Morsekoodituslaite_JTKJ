@@ -114,7 +114,7 @@ static inline int pick_scale_to_fit(const char *s, int max_scale, int max_w) {
     return sc;
 }
 
-static void draw_centered_string_scaled(ssd1306_t *disp, int y, int scale, const char *txt, uint8_t color) {
+static void draw_centered_string_scaled(ssd1306_t *disp, int y, int scale, const char *txt) {
     int w = text_pixel_width_chars(text_chars(txt), scale);
     int x = (UI_OLED_W - w) / 2;
     if (x < 0)
@@ -124,8 +124,8 @@ static void draw_centered_string_scaled(ssd1306_t *disp, int y, int scale, const
 
 static void draw_header(ssd1306_t *disp, const char *txt) {
     draw_filled_rect(disp, 0, 0, UI_OLED_W, 14, 1);
-    int scale = pick_scale_to_fit(txt, 1, UI_OLED_W -4);
-    draw_centered_string_scaled(disp, 3, scale, txt, 0);
+    int scale = pick_scale_to_fit(txt, 1, UI_OLED_W - 4);
+    draw_centered_string_scaled(disp, 3, scale, txt);
 }
 
 static int wrap_text_lines(const char *s, int scale, int max_w,
@@ -175,7 +175,7 @@ static int wrap_text_lines(const char *s, int scale, int max_w,
     return (lines[line_idx][0] != '\0') ? (line_idx + 1) : line_idx;
 }
 
-static void draw_centered_wrapped(ssd1306_t *disp, const char *txt, int max_scale, int max_w, uint8_t color) {
+static void draw_centered_wrapped(ssd1306_t *disp, const char *txt, int max_scale, int max_w) {
     int scale = max_scale;
     char lines[3][32];
     int longest = 0;
@@ -213,7 +213,7 @@ static void draw_centered_wrapped(ssd1306_t *disp, const char *txt, int max_scal
     }
 }
 
-// --- Napit ---
+// Napit
 
 static bool read_button_press(uint pin) {
     if (gpio_get(pin) == 0) {
@@ -227,7 +227,8 @@ static bool read_button_press(uint pin) {
     return false;
 }
 
-// Scroll napin tapahtumat (single/double click)
+// Scroll napin single/double-click
+
 static int poll_scroll_click_event(void) {
     static bool last_read_level = true;
     static bool stable_level = true;
@@ -262,8 +263,6 @@ static int poll_scroll_click_event(void) {
     }
     return event;
 }
-
-// --- Näytön piirtäminen ---
 
 static void draw_ui(ssd1306_t *disp) {
     ssd1306_clear(disp, 0);
@@ -314,7 +313,7 @@ static void draw_ui(ssd1306_t *disp) {
 static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state_t ret) {
     ssd1306_clear(disp, 0);
     draw_filled_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H, 1);
-    draw_centered_wrapped(disp, msg, 2, UI_OLED_W - 4, 0);
+    draw_centered_wrapped(disp, msg, 2, UI_OLED_W - 4);
     ssd1306_show(disp);
     sleep_ms(900);
     g_state = ret;
@@ -326,7 +325,7 @@ static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state
 static void perform_shutdown(ssd1306_t *disp) {
     ssd1306_clear(disp, 0);
     draw_filled_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H, 1);
-    draw_centered_wrapped(disp, "Shutting down...", 2, UI_OLED_W - 4, 0);
+    draw_centered_wrapped(disp, "Shutting down...", 2, UI_OLED_W - 4);
     ssd1306_show(disp);
     if (g_cbs.on_shutdown)
         g_cbs.on_shutdown();
@@ -378,9 +377,9 @@ void ui_menu_poll(void) {
             }
         }
     } else if (g_state == UI_STATE_CONNECT_MENU) {
-        if (scroll_evt == 2) {
+        if (scroll_evt == 2)
             g_state = UI_STATE_MAIN_MENU;
-        } else if (scroll_evt == 1)
+        else if (scroll_evt == 1)
             sel_connect = (sel_connect + 1) % connect_count;
         if (read_button_press(UI_BTN_SELECT_PIN)) {
             if (sel_connect == 0) {
