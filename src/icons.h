@@ -2,7 +2,6 @@
 #pragma once
 #include <stdint.h>
 
-// Yksinkertaiset 16x16 1-bittiset ikonit (voit vaihtaa omiin)
 // Bitti vasemmalta MSB -> oikealle, rivi kerrallaan
 
 #define ICON_W 16
