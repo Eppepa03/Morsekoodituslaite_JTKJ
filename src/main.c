@@ -9,8 +9,8 @@
 #include "queue.h"
 #include "event.h"
 #include "button_task.h"
+#include "ui_task.h"
 
-extern void ui_task(void *params);
 
 QueueHandle_t symbolQ;
 
