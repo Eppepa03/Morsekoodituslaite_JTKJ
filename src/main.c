@@ -8,6 +8,7 @@
 #include "usb_task.h"
 #include "queue.h"
 #include "event.h"
+#include "button_task.h"
 
 QueueHandle_t symbolQ;
 
@@ -21,12 +22,17 @@ int main(void) {
     symbolQ = xQueueCreate(64, sizeof(symbol_ev_t));
     configASSERT(symbolQ != NULL);
 
-    // Create Usb task
-    TaskHandle_t handle_usb;
-    xTaskCreate(usbTask, "usb", 1024, NULL, 3, &handle_usb);
 
     // Create Sensor Task
     xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
+
+
+    // Create button task
+    xTaskCreate(buttonTask, "Buttons", 1024, NULL, 1, NULL);
+
+    // Create Usb task
+    TaskHandle_t handle_usb;
+    xTaskCreate(usbTask, "usb", 1024, NULL, 3, &handle_usb);
     
 
     // Start FreeRTOS
