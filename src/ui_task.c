@@ -1,6 +1,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
-#include "ssd1306.h"
+#include "tkjhat/ssd1306.h"
 #include "ui_menu.h"
 #include "tkjhat/sdk.h"
 #include <stdio.h>
@@ -35,7 +35,7 @@ void ui_task(void *params) {
     };
 
     ui_menu_init(&disp, &callbacks);
-    ui_menu_force_redraw();
+    // ui_menu_force_redraw();
 
     while (1) {
         ui_menu_poll();
