@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "tkjhat/ssd1306.h"
+#include "tkjhat/pins.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,12 +24,43 @@ extern "C" {
 #define UI_OLED_H 64
 #endif
 
+// Per-nappi polaarisuuden automaattitunnistus (1 = päällä)
+#ifndef UI_DETECT_BUTTON_POLARITY
+#define UI_DETECT_BUTTON_POLARITY 1
+#endif
+
+// Halutessasi voit yliajaa polaarisuuden per nappi (1=aktiivinen-LOW, 0=aktiivinen-HIGH)
+// #define UI_SCROLL_ACTIVE_LOW 1
+// #define UI_SELECT_ACTIVE_LOW 1
+
+// Vaihda roolit: 1 = Button2 = SCROLL, Button1 = SELECT (oletus tälle projektille)
+#ifndef UI_SWAP_SCROLL_SELECT
+#define UI_SWAP_SCROLL_SELECT 1
+#endif
+
+// Pin-määritykset laudan makroista; UI_SWAP_SCROLL_SELECT määrää roolit
 #ifndef UI_BTN_SCROLL_PIN
-#define UI_BTN_SCROLL_PIN 6
+  #ifdef BUTTON1
+    #if UI_SWAP_SCROLL_SELECT
+      #define UI_BTN_SCROLL_PIN BUTTON2
+    #else
+      #define UI_BTN_SCROLL_PIN BUTTON1
+    #endif
+  #else
+    #define UI_BTN_SCROLL_PIN 6
+  #endif
 #endif
 
 #ifndef UI_BTN_SELECT_PIN
-#define UI_BTN_SELECT_PIN 7
+  #ifdef BUTTON2
+    #if UI_SWAP_SCROLL_SELECT
+      #define UI_BTN_SELECT_PIN BUTTON1
+    #else
+      #define UI_BTN_SELECT_PIN BUTTON2
+    #endif
+  #else
+    #define UI_BTN_SELECT_PIN 7
+  #endif
 #endif
 
 #ifndef UI_DEBOUNCE_MS
@@ -54,6 +86,7 @@ typedef struct {
 void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs);
 void ui_menu_poll(void);
 void ui_menu_force_redraw(void);
+
 ui_state_t ui_menu_get_state(void);
 int ui_menu_get_main_selection(void);
 int ui_menu_get_connect_selection(void);
