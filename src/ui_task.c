@@ -1,6 +1,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "tkjhat/ssd1306.h"
+#include "tkjhat/ssd1306.h"
 #include "ui_menu.h"
 #include "tkjhat/sdk.h"
 #include <stdio.h>
