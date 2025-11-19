@@ -63,7 +63,7 @@ int main(void) {
     // State machine
     xTaskCreate(stateMachineTask, "State", 1024, NULL, 2, NULL);
 
-        // Create UI task
+    // Create UI task
     xTaskCreate(ui_task, "UI", 2048, NULL, 2, NULL);
     
 
