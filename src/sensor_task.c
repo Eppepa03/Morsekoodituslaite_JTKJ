@@ -1,86 +1,157 @@
 #include <stdio.h>
+#include <math.h>
 #include "FreeRTOS.h"
 #include "task.h"
 #include "tkjhat/sdk.h"
 #include "sensor_task.h"
+#include "queue.h"
+
+extern QueueHandle_t symbolQ;
+
+// Tune these after testing
+#define SAMPLE_PERIOD_MS     10      // 100 Hz
+#define GYRO_START_THRESH    110.0f  // deg/s, start of flick
+#define GYRO_END_THRESH      40.0f   // deg/s, end of flick
+#define MIN_BURST_SAMPLES    5       // minimum ~50 ms
+#define MAX_BURST_SAMPLES    60      // maximum ~600 ms
+#define AXIS_MAG_THRESH      30.0f   // minimum avg axis magnitude to count as real flick
+
+// Choose which axis decides left/right
+#define USE_GX 0
+#define USE_GY 0
+#define USE_GZ 1   // using gz as you had before
 
 void sensorTask(void *pvParameters)
 {
-    printf("[TASK] start\r\n");
+    printf("[SENSOR] start\r\n");
 
-    // IMU init
     int rc = init_ICM42670();
-    printf("[TASK] init_ICM42670 rc=%d\r\n", rc);
+    printf("[SENSOR] init_ICM42670 rc=%d\r\n", rc);
     if (rc != 0) {
-        while (1) { printf("[TASK] IMU init FAIL\r\n"); vTaskDelay(pdMS_TO_TICKS(1000)); }
+        while (1) {
+            printf("[SENSOR] IMU init FAIL\r\n");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
     }
 
     rc = ICM42670_start_with_default_values();
-    printf("[TASK] start_with_default_values rc=%d\r\n", rc);
+    printf("[SENSOR] start_with_default_values rc=%d\r\n", rc);
     if (rc != 0) {
-        while (1) { printf("[TASK] IMU start FAIL\r\n"); vTaskDelay(pdMS_TO_TICKS(1000)); }
+        while (1) {
+            printf("[SENSOR] IMU start FAIL\r\n");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
     }
 
-    // Pose state
-    enum { POSE_NONE = 0, POSE_DOT, POSE_DASH };
+    enum {
+        STATE_IDLE = 0,
+        STATE_IN_BURST
+    };
 
-    static int last_pose   = POSE_NONE;  // last emitted pose
-    static int stable_pose = POSE_NONE;  // pose we currently believe we're in
-    static int stable_count = 0;         // how long we’ve been IN the pose
-    static int exit_count   = 0;         // how long we’ve been OUT of the pose
+    int state = STATE_IDLE;
 
-    // Tunables 
-    const int   STABLE_N = 2;      // ~300 ms (3×100 ms)
-    const int   EXIT_N   = 3;      // need ~400 ms out-of-pose to reset
-    const float NEAR0    = 0.25f;  // |axis| ~ 0 g
-    const float NEAR1    = 0.25f;  // |axis - 1| ~ 0
+    // Accumulators for one flick burst
+    float sum_gx = 0.0f;
+    float sum_gy = 0.0f;
+    float sum_gz = 0.0f;
+    int   burst_samples = 0;
+    int   below_end_count = 0;
 
     while (1)
     {
         float ax, ay, az, gx, gy, gz, t;
         ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
 
-        // Pose classification
-        bool near0_x     = (ax > -NEAR0 && ax < NEAR0);
-        bool near0_y     = (ay > -NEAR0 && ay < NEAR0);
-        bool near0_z     = (az > -NEAR0 && az < NEAR0);
-        bool near1_y     = (ay > (1.0f - NEAR1) && ay < (1.0f + NEAR1));
-        bool near_neg1_z = (az > (-1.0f - NEAR1) && az < (-1.0f + NEAR1));
+        // Total gyro magnitude
+        float gmag = sqrtf(gx*gx + gy*gy + gz*gz);
 
-        int current = POSE_NONE;
-        // DOT = Y ≈ +1g, X ≈ 0, Z ≈ 0
-        if (near1_y && near0_x && near0_z) {
-            current = POSE_DOT;
-        }
-        // DASH = Z ≈ -1g, X ≈ 0, Y ≈ 0  (rotate 90° away from you)
-        else if (near_neg1_z && near0_x && near0_y) {
-            current = POSE_DASH;
-        }
+        switch (state)
+        {
+        case STATE_IDLE:
+            // Wait for big enough motion to start a flick
+            if (gmag > GYRO_START_THRESH) {
+                state = STATE_IN_BURST;
+                sum_gx = gx;
+                sum_gy = gy;
+                sum_gz = gz;
+                burst_samples = 1;
+                below_end_count = 0;
 
-        // Stability filtering: stickiness in-pose; require EXIT_N misses to reset
-        if (current == stable_pose) {
-            if (stable_count < 1000) stable_count++;
-            exit_count = 0;
-        } else {
-            exit_count++;
-            if (exit_count >= EXIT_N) {
-                stable_pose  = current;
-                stable_count = (current != POSE_NONE) ? 1 : 0;
-                exit_count   = 0;
+                // Debug prints removed to avoid spam
+                // printf("[SENSOR] burst start gmag=%.1f gx=%.1f gy=%.1f gz=%.1f\r\n",
+                //        gmag, gx, gy, gz);
             }
+            break;
+
+        case STATE_IN_BURST:
+            // Accumulate while we're in a burst
+            sum_gx += gx;
+            sum_gy += gy;
+            sum_gz += gz;
+            burst_samples++;
+
+            if (gmag < GYRO_END_THRESH) {
+                // Count how many consecutive "low motion" samples we see
+                below_end_count++;
+            } else {
+                below_end_count = 0;
+            }
+
+            // Conditions to end the burst:
+            // - motion has dropped below threshold for a few samples
+            // - OR burst is too long
+            if (below_end_count >= 3 || burst_samples >= MAX_BURST_SAMPLES) {
+
+                // Compute average axis values
+                float avg_gx = sum_gx / burst_samples;
+                float avg_gy = sum_gy / burst_samples;
+                float avg_gz = sum_gz / burst_samples;
+
+                // Debug prints removed to avoid spam
+                // printf("[SENSOR] burst end samples=%d avg_gx=%.1f avg_gy=%.1f avg_gz=%.1f\r\n",
+                //        burst_samples, avg_gx, avg_gy, avg_gz);
+
+                // Pick which axis we use for left/right decision
+                float axis_avg = 0.0f;
+#if USE_GX
+                axis_avg = avg_gx;
+#elif USE_GY
+                axis_avg = avg_gy;
+#else // USE_GZ by default
+                axis_avg = avg_gz;
+#endif
+
+                // Only treat as valid flick if axis magnitude is big enough
+                if (burst_samples >= MIN_BURST_SAMPLES &&
+                    fabsf(axis_avg) > AXIS_MAG_THRESH)
+                {
+                    char sym;
+
+                    if (axis_avg > 0.0f) {
+                        // DASH
+                        sym = '-';
+                        printf("-");   // print the actual dash
+                    } else {
+                        // DOT
+                        sym = '.';
+                        printf(".");   // print the actual dot
+                    }
+
+                    // Send symbol to the queue (non-blocking)
+                    xQueueSend(symbolQ, &sym, 0);
+                }
+                // else: silently ignore tiny or weird bursts
+
+                // Go back to idle and reset accumulators
+                state = STATE_IDLE;
+                sum_gx = sum_gy = sum_gz = 0.0f;
+                burst_samples = 0;
+                below_end_count = 0;
+            }
+
+            break;
         }
 
-        if (stable_pose == POSE_NONE) {
-        last_pose = POSE_NONE;
-        }
-
-        // Emit exactly once on pose entry
-        if (stable_pose != POSE_NONE && stable_count == STABLE_N && stable_pose != last_pose) {
-            if (stable_pose == POSE_DOT)  printf(". (dot)\r\n");
-            if (stable_pose == POSE_DASH) printf("- (dash)\r\n");
-            last_pose = stable_pose;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(100)); // 10 Hz
+        vTaskDelay(pdMS_TO_TICKS(SAMPLE_PERIOD_MS));
     }
 }
