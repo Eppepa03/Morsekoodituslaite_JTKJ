@@ -68,7 +68,7 @@ int main(void) {
     
 
     // Create Sensor Task
-    xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
+    // xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
 
 
     // Create button task

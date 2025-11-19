@@ -1,4 +1,3 @@
-
 #include "state_machine.h"
 #include "FreeRTOS.h"
 #include "task.h"
