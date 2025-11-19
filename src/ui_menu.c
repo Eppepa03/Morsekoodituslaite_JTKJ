@@ -22,7 +22,7 @@ static const int main_count = 3;
 static const char* connect_items[] = {"USB", "Wireless"};
 static const int connect_count = 2;
 
-// UUSI: USB-valikko
+// USB-valikko
 static const char* usb_items[] = {"Send", "Receive"};
 static const int usb_count = 2;
 
@@ -34,7 +34,7 @@ static const int confirm_count = 2;
 static volatile ui_state_t g_state = UI_STATE_MAIN_MENU;
 static volatile int sel_main = 0;
 static volatile int sel_connect = 0;
-static volatile int sel_usb = 0; // UUSI
+static volatile int sel_usb = 0;
 static volatile int sel_confirm = 1;
 static bool need_redraw = true;
 
@@ -44,7 +44,7 @@ static ui_menu_callbacks_t g_cbs = {0};
 static bool g_scroll_active_low = true;
 static bool g_select_active_low = true;
 
-// ---------- Invert-apurit (XOR suoraan framebufferiin) ----------
+// ---------- Invert-apurit ----------
 static void ssd1306_invert_rect(ssd1306_t *p, int x, int y, int w, int h){
     if (!p || !p->buffer) return;
     if (x < 0) { w += x; x = 0; }
@@ -76,7 +76,6 @@ static void draw_filled_rect(ssd1306_t *p, int x, int y, int w, int h, uint8_t c
     for (int j = 0; j < h; j++) draw_hline(p, x, y + j, w, c);
 }
 
-// 1bpp bitmap valkoisena
 static inline void ssd1306_draw_bitmap_1bpp(ssd1306_t *d,int x,int y,int w,int h,const uint8_t *bits){
     int stride = (w + 7) >> 3;
     for (int yy = 0; yy < h; yy++) {
@@ -146,8 +145,8 @@ static int poll_scroll_click_event(void){
 // ---------- Piirto ----------
 static void draw_header(ssd1306_t *disp, const char *txt){
     int x = center_x_for(txt, 1, UI_OLED_W);
-    ssd1306_draw_string(disp, (uint32_t)x, 3, 1, txt);   // valkoinen teksti mustalle
-    ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, 14);      // invert -> valkoinen palkki + musta teksti
+    ssd1306_draw_string(disp, (uint32_t)x, 3, 1, txt);
+    ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, 14);
 }
 
 static void draw_ui(ssd1306_t *disp){
@@ -170,7 +169,6 @@ static void draw_ui(ssd1306_t *disp){
             if (i == sel_connect) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
         }
 
-    // UUSI: USB Menu
     } else if (g_state == UI_STATE_USB_MENU) {
         draw_header(disp, "USB");
         for (int i = 0; i < usb_count; i++) {
@@ -192,12 +190,23 @@ static void draw_ui(ssd1306_t *disp){
     ssd1306_show(disp);
 }
 
+// --- KORJATTU FUNKTIO: Automaattinen skaalaus ---
 static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state_t ret){
     ssd1306_clear(disp);
-    int w = text_pixel_width_chars(text_chars(msg), 2);
+    
+    int len = text_chars(msg);
+    int scale = 2; // Oletus: iso fontti
+    
+    // Jos teksti on liian leveä isolle fontille (yli 8 merkkiä), vaihda pieneen fonttiin
+    if (text_pixel_width_chars(len, scale) > UI_OLED_W) {
+        scale = 1;
+    }
+
+    int w = text_pixel_width_chars(len, scale);
     int x = (UI_OLED_W - w) / 2; if (x < 0) x = 0;
-    int y = (UI_OLED_H - FONT_H*2) / 2;
-    ssd1306_draw_string(disp, (uint32_t)x, (uint32_t)y, 2, msg);
+    int y = (UI_OLED_H - FONT_H * scale) / 2;
+    
+    ssd1306_draw_string(disp, (uint32_t)x, (uint32_t)y, scale, msg);
     ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H);
     ssd1306_show(disp);
     vTaskDelay(pdMS_TO_TICKS(900));
@@ -208,11 +217,25 @@ static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state
     need_redraw = true;
 }
 
+// --- KORJATTU FUNKTIO: Automaattinen skaalaus ---
 static void perform_shutdown(ssd1306_t *disp){
     ssd1306_clear(disp);
-    ssd1306_draw_string(disp, 6, (UI_OLED_H - FONT_H*2)/2, 2, "Shutting down...");
+    const char* msg = "Shutting down...";
+    
+    int len = text_chars(msg);
+    int scale = 2;
+    if (text_pixel_width_chars(len, scale) > UI_OLED_W) {
+        scale = 1;
+    }
+
+    int w = text_pixel_width_chars(len, scale);
+    int x = (UI_OLED_W - w) / 2; if (x < 0) x = 0;
+    int y = (UI_OLED_H - FONT_H * scale) / 2;
+
+    ssd1306_draw_string(disp, (uint32_t)x, (uint32_t)y, scale, msg);
     ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H);
     ssd1306_show(disp);
+    
     if (g_cbs.on_shutdown) g_cbs.on_shutdown();
 }
 
@@ -272,7 +295,6 @@ void ui_menu_poll(void){
 
         if (read_button_press_pin(UI_BTN_SELECT_PIN, g_select_active_low)) {
             if (sel_connect == 0) { 
-                // Siirry USB-valikkoon, nollaa valinta
                 g_state = UI_STATE_USB_MENU; 
                 sel_usb = 0; 
             }
@@ -282,9 +304,8 @@ void ui_menu_poll(void){
             }
         }
     
-    // UUSI: USB Menu logiikka
     } else if (g_state == UI_STATE_USB_MENU) {
-        if (scroll_evt == 2) g_state = UI_STATE_CONNECT_MENU; // Palaa edelliseen
+        if (scroll_evt == 2) g_state = UI_STATE_CONNECT_MENU;
         else if (scroll_evt == 1) sel_usb = (sel_usb + 1) % usb_count;
 
         if (read_button_press_pin(UI_BTN_SELECT_PIN, g_select_active_low)) {
@@ -311,16 +332,15 @@ void ui_menu_poll(void){
         main_before != sel_main ||
         confirm_before != sel_confirm ||
         connect_before != sel_connect ||
-        usb_before != sel_usb) { // UUSI ehto
+        usb_before != sel_usb) {
         draw_ui(g_disp);
         need_redraw = false;
     }
 }
 
-// Valinnaiset
 void ui_menu_force_redraw(void){ need_redraw = true; }
 ui_state_t ui_menu_get_state(void){ return g_state; }
 int ui_menu_get_main_selection(void){ return sel_main; }
 int ui_menu_get_connect_selection(void){ return sel_connect; }
-int ui_menu_get_usb_selection(void){ return sel_usb; } // UUSI
+int ui_menu_get_usb_selection(void){ return sel_usb; }
 int ui_menu_get_confirm_selection(void){ return sel_confirm; }
