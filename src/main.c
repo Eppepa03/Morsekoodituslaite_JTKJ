@@ -63,12 +63,12 @@ int main(void) {
     // State machine
     xTaskCreate(stateMachineTask, "State", 1024, NULL, 2, NULL);
 
-    // Create UI task
+        // Create UI task
     xTaskCreate(ui_task, "UI", 2048, NULL, 2, NULL);
     
 
     // Create Sensor Task
-    // xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
+    xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
 
 
     // Create button task
