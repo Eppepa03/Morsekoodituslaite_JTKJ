@@ -112,6 +112,7 @@ add_executable(${MAIN_TARGET}
     src/button_task.c
     src/ui_menu.c
     src/ui_task.c
+    src/state_machine.c
 )
 
 # Links. Add all libraries that application is using. It must at least use the pico_stdlib
