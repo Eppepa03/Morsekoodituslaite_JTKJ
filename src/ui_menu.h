@@ -74,12 +74,14 @@ extern "C" {
 typedef enum {
   UI_STATE_MAIN_MENU = 0,
   UI_STATE_CONNECT_MENU,
+  UI_STATE_USB_MENU,      // UUSI TILA
   UI_STATE_CONFIRM_SHUTDOWN
 } ui_state_t;
 
 typedef struct {
-  void (*on_connect_usb)(void);
   void (*on_connect_wireless)(void);
+  void (*on_usb_send)(void);    // UUSI: Send
+  void (*on_usb_receive)(void); // UUSI: Receive
   void (*on_shutdown)(void);
 } ui_menu_callbacks_t;
 
@@ -90,6 +92,7 @@ void ui_menu_force_redraw(void);
 ui_state_t ui_menu_get_state(void);
 int ui_menu_get_main_selection(void);
 int ui_menu_get_connect_selection(void);
+int ui_menu_get_usb_selection(void); // UUSI
 int ui_menu_get_confirm_selection(void);
 
 #ifdef __cplusplus

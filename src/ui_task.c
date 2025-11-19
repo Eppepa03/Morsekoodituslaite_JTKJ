@@ -8,7 +8,10 @@
 
 static ssd1306_t disp;
 
-static void on_usb(void)      { printf("USB valittu\n"); }
+// UUDET CALLBACKIT
+static void on_usb_send(void)    { printf("USB Send valittu\n"); }
+static void on_usb_receive(void) { printf("USB Receive valittu\n"); }
+
 static void on_wireless(void) { printf("Wireless valittu\n"); }
 static void on_shutdown(void) { printf("Shutdown valittu\n"); }
 
@@ -37,7 +40,8 @@ void ui_task(void *params) {
 
     // UI käyntiin
     ui_menu_callbacks_t callbacks = {
-        .on_connect_usb = on_usb,
+        .on_usb_send = on_usb_send,       // UUSI
+        .on_usb_receive = on_usb_receive, // UUSI
         .on_connect_wireless = on_wireless,
         .on_shutdown = on_shutdown
     };
