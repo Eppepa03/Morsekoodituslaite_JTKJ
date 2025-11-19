@@ -1,8 +1,13 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
 #include "tkjhat/sdk.h"   // init_sw1/init_sw2, SW1_PIN/SW2_PIN
 #include "button_task.h"
+#include "event.h"        // symbol_ev_t { DOT, DASH, GAP_CHAR, GAP_WORD, END_MSG }
+
+extern QueueHandle_t symbolQ;
 
 // ---- Tunables ----
 #define SCAN_MS       20      // scan period
@@ -13,9 +18,33 @@
 #define DEBOUNCE_TKS  (pdMS_TO_TICKS(DEBOUNCE_MS))
 #define DOUBLE_TKS    (pdMS_TO_TICKS(DOUBLE_MS))
 
-static inline void print_letter_gap(void) { putchar(' ');  printf(" (letter)\r\n"); }
-static inline void print_word_gap(void)   { putchar(' '); putchar(' '); printf(" (word)\r\n"); }
-static inline void print_end_msg(void)    { putchar(' '); putchar(' '); putchar(' '); printf(" (END)\r\n"); }
+// Helpers: send events to the queue (and print for debug)
+static inline void send_letter_gap(void)
+{
+    symbol_ev_t ev = GAP_CHAR;
+    xQueueSend(symbolQ, &ev, 0);
+    putchar(' ');
+    printf(" (letter)\r\n");
+}
+
+static inline void send_word_gap(void)
+{
+    symbol_ev_t ev = GAP_WORD;
+    xQueueSend(symbolQ, &ev, 0);
+    putchar(' ');
+    putchar(' ');
+    printf(" (word)\r\n");
+}
+
+static inline void send_end_msg(void)
+{
+    symbol_ev_t ev = END_MSG;
+    xQueueSend(symbolQ, &ev, 0);
+    putchar(' ');
+    putchar(' ');
+    putchar(' ');
+    printf(" (END)\r\n");
+}
 
 void buttonTask(void *pvParameters)
 {
@@ -25,13 +54,13 @@ void buttonTask(void *pvParameters)
     init_sw2();
 
     // SW1 click / double-click state
-    bool sw1_prev = false;
-    TickType_t sw1_last_change = 0;
+    bool      sw1_prev          = false;
+    TickType_t sw1_last_change  = 0;
     TickType_t sw1_last_release = 0;
-    bool sw1_single_pending = false;   // waiting to see if a second click comes
+    bool      sw1_single_pending = false;   // waiting to see if a second click comes
 
     // SW2 simple click
-    bool sw2_prev = false;
+    bool      sw2_prev         = false;
     TickType_t sw2_last_change = 0;
 
     while (1) {
@@ -49,11 +78,11 @@ void buttonTask(void *pvParameters)
                 if (sw1_single_pending && (now - sw1_last_release) <= DOUBLE_TKS) {
                     // Double-click: END message
                     sw1_single_pending = false;
-                    print_end_msg();
+                    send_end_msg();
                 } else {
                     // Start single-click pending window
                     sw1_single_pending = true;
-                    sw1_last_release = now;
+                    sw1_last_release   = now;
                 }
             }
             sw1_prev = sw1;
@@ -62,7 +91,7 @@ void buttonTask(void *pvParameters)
         // If single-click pending and window elapsed with no second click → letter gap
         if (sw1_single_pending && (now - sw1_last_release) > DOUBLE_TKS) {
             sw1_single_pending = false;
-            print_letter_gap();
+            send_letter_gap();
         }
 
         // --- SW2: simple click on release → word gap ---
@@ -70,7 +99,7 @@ void buttonTask(void *pvParameters)
             sw2_last_change = now;
 
             if (!sw2 && sw2_prev) { // RELEASE edge
-                print_word_gap();
+                send_word_gap();
             }
             sw2_prev = sw2;
         }
