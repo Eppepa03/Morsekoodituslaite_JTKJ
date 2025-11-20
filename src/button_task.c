@@ -1,115 +1,94 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include "pico/stdlib.h"    
+
+// --- NÄMÄ TARVITAAN SDK:N JA HARDWAREN KANSSA ---
+#include "pico/stdlib.h"
 #include "hardware/gpio.h"
+#include "tkjhat/sdk.h"  // Sisältää BUTTON1 ja BUTTON2 määritykset
+// ------------------------------------------------
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include "tkjhat/sdk.h"
 #include "button_task.h"
 #include "event.h"
 #include "state_machine.h"
 
-<<<<<<< HEAD
 // Haetaan ulkopuoliset jonot ja tila
-=======
->>>>>>> beea2da792bfef0a2e7709efe10d975cb967005f
 extern QueueHandle_t morseQ;
-<<<<<<< HEAD
 extern QueueHandle_t uiQ;
 extern volatile State_t currentState;
-=======
->>>>>>> beea2da792bfef0a2e7709efe10d975cb967005f
 
 // ---- Asetukset ----
-#define SCAN_MS       20      // Kuinka usein luetaan (ms)
-#define DEBOUNCE_MS   40      // Häiriönpoistoaika (ms)
-#define DOUBLE_MS     350     // Tuplaklikin aikaraja (ms)
-#define DASH_THRES_MS 200     // Kynnys DOT/DASH erotteluun (ms)
+#define SCAN_MS       10      
+#define DEBOUNCE_MS   40      
+#define DOUBLE_MS     350     
+#define DASH_THRES_MS 200     
 
-// Muutetaan ms tickeiksi
 #define SCAN_TICKS    (pdMS_TO_TICKS(SCAN_MS))
 #define DEBOUNCE_TKS  (pdMS_TO_TICKS(DEBOUNCE_MS))
 #define DOUBLE_TKS    (pdMS_TO_TICKS(DOUBLE_MS))
 
-<<<<<<< HEAD
-// Pinnit (ellei määritelty SDK:ssa)
+// Määritellään pinnit käyttäen SDK:n vakioita.
+// Jos SDK ei jostain syystä määrittele niitä, käytetään varavaihtoehtoja.
 #ifndef SW1_PIN
-#define SW1_PIN 6
-#endif
-#ifndef SW2_PIN
-#define SW2_PIN 7
+  #ifdef BUTTON1
+    #define SW1_PIN BUTTON1
+  #else
+    #define SW1_PIN 7 // JTKJ-laudan yleinen Button 1 (tarkista jos ei toimi)
+  #endif
 #endif
 
-// APUFUNKTIO: Lukee pinnin tilan
-// Oletus: Active Low (Pull-up). Painettu = 0 (false), Vapaa = 1 (true).
-// Palauttaa true jos painettu.
+#ifndef SW2_PIN
+  #ifdef BUTTON2
+    #define SW2_PIN BUTTON2
+  #else
+    #define SW2_PIN 8 // JTKJ-laudan yleinen Button 2 (tarkista jos ei toimi)
+  #endif
+#endif
+
+// ---------------------------------------------------------
+// APUFUNKTIOT (Nämä pitää olla ENNEN buttonTask-funktiota)
+// ---------------------------------------------------------
+
+// 1. Lukee napin tilan
+// JTKJ-laudalla napit ovat yleensä Active Low (GND kun painettu).
 static bool is_pressed(unsigned int pin) {
     return !gpio_get(pin);
-=======
-// Helpers: send events to the queue (and print for debug)
-static inline void send_letter_gap(void)
-{
-    // symbol_ev_t ev = GAP_CHAR;
-    char gap_char[] = " ";
-    xQueueSend(morseQ, &gap_char, 0);
-    // putchar(' ');
-    // printf(" (letter)\r\n");
->>>>>>> beea2da792bfef0a2e7709efe10d975cb967005f
 }
 
-<<<<<<< HEAD
-// APUFUNKTIO: Lähettää Morse-symbolin
+// 2. Lähettää Morse-jonoon
 static void send_morse_symbol(symbol_ev_t sym) {
     xQueueSend(morseQ, &sym, 0);
-=======
-static inline void send_word_gap(void)
-{
-    // symbol_ev_t ev = GAP_WORD;
-    char gap_word[] = "  ";
-    xQueueSend(morseQ, &gap_word, 0);
-    // putchar(' ');
-    // putchar(' ');
-    // printf(" (word)\r\n");
->>>>>>> beea2da792bfef0a2e7709efe10d975cb967005f
 }
 
-<<<<<<< HEAD
-// APUFUNKTIO: Lähettää UI-komennon
+// 3. Lähettää UI-jonoon
 static void send_ui_cmd(ui_cmd_t cmd) {
     xQueueSend(uiQ, &cmd, 0);
-=======
-static inline void send_end_msg(void)
-{
-    // symbol_ev_t ev = END_MSG;
-    char end_msg[]= "   \n";
-    xQueueSend(morseQ, &end_msg, 0);
-    // putchar(' ');
-    // putchar(' ');
-    // putchar(' ');
-    // printf(" (END)\r\n");
->>>>>>> beea2da792bfef0a2e7709efe10d975cb967005f
 }
 
-// --- PÄÄTASKI ---
+// ---------------------------------------------------------
+// PÄÄTASKI
+// ---------------------------------------------------------
 void buttonTask(void *pvParameters)
 {
     (void)pvParameters;
 
-    // Alustetaan pinnit
+    // SDK:n init_hat_sdk() on todennäköisesti ajettu mainissa,
+    // mutta varmistetaan pinnien tila tässä.
     gpio_init(SW1_PIN); gpio_set_dir(SW1_PIN, GPIO_IN); gpio_pull_up(SW1_PIN);
     gpio_init(SW2_PIN); gpio_set_dir(SW2_PIN, GPIO_IN); gpio_pull_up(SW2_PIN);
 
-    printf("Button Task started. SW1=%d, SW2=%d\n", SW1_PIN, SW2_PIN);
+    printf("Button Task started. Using SDK Pins: SW1=%d, SW2=%d\n", SW1_PIN, SW2_PIN);
 
     // --- SW1 MUUTTUJAT (Scroll / Key) ---
-    bool       sw1_phys_prev = false;   // Edellinen raaka arvo
-    bool       sw1_stable    = false;   // Debouncattu tila
-    TickType_t sw1_last_edge = 0;       // Aika jolloin tila muuttui
-    TickType_t sw1_press_start = 0;     // Aika jolloin painallus alkoi
+    bool       sw1_phys_prev = false;
+    bool       sw1_stable    = false;
+    TickType_t sw1_last_edge = 0;
+    TickType_t sw1_press_start = 0;
     
-    bool       sw1_pending_double = false; // Odotetaanko toista painallusta?
-    TickType_t sw1_release_time = 0;       // Milloin eka painallus loppui
+    bool       sw1_pending_double = false;
+    TickType_t sw1_release_time = 0;
 
     // --- SW2 MUUTTUJAT (Select / Gap) ---
     bool       sw2_phys_prev = false;
@@ -120,21 +99,21 @@ void buttonTask(void *pvParameters)
         TickType_t now = xTaskGetTickCount();
 
         // ============================================================
-        // 1. BUTTON 1 KÄSITTELY (Scroll / Morse Key)
+        // 1. BUTTON 1 KÄSITTELY (SW1)
         // ============================================================
         bool sw1_raw = is_pressed(SW1_PIN);
         
-        // A. Debounce logiikka
+        // Debounce: Jos raaka tila muuttui, talleta aika
         if (sw1_raw != sw1_phys_prev) {
             sw1_last_edge = now;
         }
         sw1_phys_prev = sw1_raw;
 
-        // Jos signaali on vakaa DEBOUNCE-ajan...
+        // Jos tila on vakaa DEBOUNCE-ajan...
         if ((now - sw1_last_edge) >= DEBOUNCE_TKS) {
             
             if (sw1_raw != sw1_stable) {
-                // TILA VAIHTUI (Reuna)
+                // TILA VAIHTUI
                 sw1_stable = sw1_raw;
 
                 if (sw1_stable) { 
@@ -145,31 +124,32 @@ void buttonTask(void *pvParameters)
                     // --- VAPAUTETTU (Rising Edge) ---
                     uint32_t duration = (now - sw1_press_start) * portTICK_PERIOD_MS;
 
-                    // HAARAUTUMINEN: UI VAI MORSE?
+                    // PÄÄTÖS: OLLAANKO VALIKOSSA VAI MORSETETAANKO?
                     if (currentState == STATE_IDLE || currentState == STATE_MENU) {
-                        // --- UI-MOODI ---
+                        // --- UI-TILA ---
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
-                            // Tuplaklikki tuli! -> BACK
+                            // Tuplaklikki -> BACK
                             send_ui_cmd(UI_CMD_SCROLL_BACK);
                             sw1_pending_double = false; 
                         } else {
-                            // Eka klikki -> Odotetaan
+                            // Eka klikki -> Odotetaan hetki
                             sw1_pending_double = true;
                             sw1_release_time = now;
                         }
                     } 
                     else {
-                        // --- MORSE-MOODI ---
+                        // --- MORSE-TILA ---
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
                             // Tuplaklikki -> END MESSAGE / EXIT
                             send_morse_symbol(END_MSG);
                             sw1_pending_double = false;
                         } 
                         else {
-                            // Normaali Morse-merkki
+                            // Yksittäinen painallus -> Morse merkki
                             sw1_pending_double = true;
                             sw1_release_time = now;
 
+                            // Lyhyt vs Pitkä
                             if (duration > DASH_THRES_MS) send_morse_symbol(DASH);
                             else                          send_morse_symbol(DOT);
                         }
@@ -178,19 +158,18 @@ void buttonTask(void *pvParameters)
             }
         }
 
-        // B. Timeout (UI:ssa Scroll tapahtuu vasta jos tuplaklikkiä ei tule)
+        // UI-TILAN TIMEOUT (Jos tuplaklikkiä ei kuulunutkaan)
         if (sw1_pending_double && (now - sw1_release_time) > DOUBLE_TKS) {
             sw1_pending_double = false;
             
             if (currentState == STATE_IDLE || currentState == STATE_MENU) {
-                // Aika loppui -> Se olikin vain yksi SCROLL
+                // Aika loppui -> Se oli yksi SCROLL
                 send_ui_cmd(UI_CMD_SCROLL);
             }
-            // Morsessa merkki lähetettiin jo heti painalluksesta, ei tehdä mitään
         }
 
         // ============================================================
-        // 2. BUTTON 2 KÄSITTELY (Select / Word Gap)
+        // 2. BUTTON 2 KÄSITTELY (SW2)
         // ============================================================
         bool sw2_raw = is_pressed(SW2_PIN);
 
