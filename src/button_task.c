@@ -5,19 +5,42 @@
 #include "queue.h"
 #include "tkjhat/sdk.h"   // init_sw1/init_sw2, SW1_PIN/SW2_PIN
 #include "button_task.h"
-#include "event.h"        // symbol_ev_t { DOT, DASH, GAP_CHAR, GAP_WORD, END_MSG }
+#include "event.h"        // symbol_ev_t (Morse) ja ui_cmd_t (UI)
+#include "state_machine.h" // currentState
 
+<<<<<<< HEAD
+// Tuodaan jonot näkyviin main.c:stä
 extern QueueHandle_t morseQ;
+extern QueueHandle_t uiQ;
+extern volatile State_t currentState;
+=======
+extern QueueHandle_t morseQ;
+>>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 
 // ---- Tunables ----
-#define SCAN_MS       20      // scan period
-#define DEBOUNCE_MS   40      // ignore edges closer than this
-#define DOUBLE_MS     350     // second click must arrive within this window
+#define SCAN_MS       20      // Kuinka usein pinnejä luetaan (10ms on hyvä)
+#define DEBOUNCE_MS   40      // Häiriönpoisto
+#define DOUBLE_MS     350     // Aikaikkuna tuplaklikille
+#define DASH_THRES_MS 200     // Kynnys: alle tämän on DOT, yli on DASH
 
 #define SCAN_TICKS    (pdMS_TO_TICKS(SCAN_MS))
 #define DEBOUNCE_TKS  (pdMS_TO_TICKS(DEBOUNCE_MS))
 #define DOUBLE_TKS    (pdMS_TO_TICKS(DOUBLE_MS))
 
+<<<<<<< HEAD
+// Pinnien määrittely (varmistus, jos ei SDK:ssa)
+#ifndef SW1_PIN
+#define SW1_PIN 6
+#endif
+#ifndef SW2_PIN
+#define SW2_PIN 7
+#endif
+
+// Oletus: Napit kytketty maahan (GND) ja Pull-Up päällä.
+// 0 = Painettu, 1 = Vapaa.
+static bool is_pressed(uint pin) {
+    return !gpio_get(pin);
+=======
 // Helpers: send events to the queue (and print for debug)
 static inline void send_letter_gap(void)
 {
@@ -25,8 +48,21 @@ static inline void send_letter_gap(void)
     xQueueSend(morseQ, &ev, 0);
     putchar(' ');
     printf(" (letter)\r\n");
+>>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 }
 
+<<<<<<< HEAD
+// ---- Helpers: send events ----
+
+// Lähettää Morse-symbolin
+static void send_morse_symbol(symbol_ev_t sym) {
+    xQueueSend(morseQ, &sym, 0);
+    // Debug-tulostus konsoliin
+    if (sym == DOT) printf(".\n");
+    else if (sym == DASH) printf("-\n");
+    else if (sym == GAP_WORD) printf(" [WORD GAP]\n");
+    else if (sym == END_MSG) printf(" [END]\n");
+=======
 static inline void send_word_gap(void)
 {
     symbol_ev_t ev = GAP_WORD;
@@ -34,8 +70,14 @@ static inline void send_word_gap(void)
     putchar(' ');
     putchar(' ');
     printf(" (word)\r\n");
+>>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 }
 
+<<<<<<< HEAD
+// Lähettää UI-komennon
+static void send_ui_cmd(ui_cmd_t cmd) {
+    xQueueSend(uiQ, &cmd, 0);
+=======
 static inline void send_end_msg(void)
 {
     symbol_ev_t ev = END_MSG;
@@ -44,64 +86,148 @@ static inline void send_end_msg(void)
     putchar(' ');
     putchar(' ');
     printf(" (END)\r\n");
+>>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 }
 
 void buttonTask(void *pvParameters)
 {
     (void)pvParameters;
 
-    init_sw1();
-    init_sw2();
+    // Alustetaan pinnit
+    gpio_init(SW1_PIN); gpio_set_dir(SW1_PIN, GPIO_IN); gpio_pull_up(SW1_PIN);
+    gpio_init(SW2_PIN); gpio_set_dir(SW2_PIN, GPIO_IN); gpio_pull_up(SW2_PIN);
 
-    // SW1 click / double-click state
-    bool      sw1_prev          = false;
-    TickType_t sw1_last_change  = 0;
-    TickType_t sw1_last_release = 0;
-    bool      sw1_single_pending = false;   // waiting to see if a second click comes
+    printf("Button Task started. Pins: %d, %d\n", SW1_PIN, SW2_PIN);
 
-    // SW2 simple click
-    bool      sw2_prev         = false;
-    TickType_t sw2_last_change = 0;
+    // SW1 Tilamuuttujat (Scroll / Key)
+    bool       sw1_phys_prev = false;     // Fyysinen tila viime kierroksella
+    bool       sw1_stable    = false;     // Debouncattu tila
+    TickType_t sw1_last_edge = 0;         // Milloin tila muuttui viimeksi
+    TickType_t sw1_press_start = 0;       // Milloin painallus alkoi (Morse kestoa varten)
+    
+    // Tuplaklikki-logiikka SW1:lle
+    bool       sw1_pending_double = false; // Odotetaanko toista painallusta?
+    TickType_t sw1_release_time = 0;       // Milloin eka painallus loppui
+
+    // SW2 Tilamuuttujat (Select / Gap)
+    bool       sw2_phys_prev = false;
+    bool       sw2_stable    = false;
+    TickType_t sw2_last_edge = 0;
 
     while (1) {
         TickType_t now = xTaskGetTickCount();
 
-        // --- read buttons (active-high per SDK docs) ---
-        bool sw1 = gpio_get(SW1_PIN);
-        bool sw2 = gpio_get(SW2_PIN);
+        // --------------------------------------------
+        // 1. LUE PINNIT JA DEBOUNCE (SW1)
+        // --------------------------------------------
+        bool sw1_raw = is_pressed(SW1_PIN);
+        
+        // Jos tila muuttui, nollataan debounce-ajastin
+        if (sw1_raw != sw1_phys_prev) {
+            sw1_last_edge = now;
+        }
+        sw1_phys_prev = sw1_raw;
 
-        // --- SW1: single-click vs double-click on release ---
-        if (sw1 != sw1_prev && (now - sw1_last_change) >= DEBOUNCE_TKS) {
-            sw1_last_change = now;
+        // Jos tila on pysynyt samana DEBOUNCE ajan, hyväksytään se
+        if ((now - sw1_last_edge) >= DEBOUNCE_TKS) {
+            
+            if (sw1_raw != sw1_stable) {
+                // TILA MUUTTUI VIRALLISESTI (Reuna)
+                sw1_stable = sw1_raw;
 
-            if (!sw1 && sw1_prev) { // RELEASE edge
-                if (sw1_single_pending && (now - sw1_last_release) <= DOUBLE_TKS) {
-                    // Double-click: END message
-                    sw1_single_pending = false;
-                    send_end_msg();
-                } else {
-                    // Start single-click pending window
-                    sw1_single_pending = true;
-                    sw1_last_release   = now;
+                // --- SW1 PAINETTU (Falling Edge) ---
+                if (sw1_stable) { 
+                    sw1_press_start = now; // Talteen aika mittausta varten
+                }
+                // --- SW1 VAPAUTETTU (Rising Edge) ---
+                else {
+                    // Lasketaan painalluksen kesto
+                    uint32_t press_duration = (now - sw1_press_start) * portTICK_PERIOD_MS;
+
+                    // HAARAUTUMINEN: OLLAANKO MENU VAI MORSE TILASSA?
+                    if (currentState == STATE_IDLE || currentState == STATE_MENU) {
+                        // --- UI TILA ---
+                        // Tarkistetaan tuplaklikki
+                        if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
+                            // Toinen klikki tuli ajoissa! -> BACK
+                            send_ui_cmd(UI_CMD_SCROLL_BACK);
+                            sw1_pending_double = false; // Nollataan tilanne
+                        } else {
+                            // Ensimmäinen klikki -> Odotetaan hetki
+                            sw1_pending_double = true;
+                            sw1_release_time = now;
+                        }
+                    } 
+                    else {
+                        // --- MORSE TILA ---
+                        // Tarkistetaan onko tämä tuplaklikki (Lopetus) vai normaali merkki
+                        if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
+                            // Tuplaklikki Morsessa -> END_MSG (Palaa valikkoon)
+                            send_morse_symbol(END_MSG);
+                            sw1_pending_double = false;
+                        } 
+                        else {
+                            // Ei vielä varmaa onko tupla, mutta Morsessa pitää reagoida heti
+                            // JOTEN: Lähetetään merkki, mutta jätetään "portti auki" END_MSG:lle
+                            
+                            // Tässä logiikassa: Tuplaklikki on END, yksittäiset on DOT/DASH
+                            sw1_pending_double = true;
+                            sw1_release_time = now;
+
+                            if (press_duration > DASH_THRES_MS) {
+                                send_morse_symbol(DASH);
+                            } else {
+                                send_morse_symbol(DOT);
+                            }
+                        }
+                    }
                 }
             }
-            sw1_prev = sw1;
         }
 
-        // If single-click pending and window elapsed with no second click → letter gap
-        if (sw1_single_pending && (now - sw1_last_release) > DOUBLE_TKS) {
-            sw1_single_pending = false;
-            send_letter_gap();
-        }
-
-        // --- SW2: simple click on release → word gap ---
-        if (sw2 != sw2_prev && (now - sw2_last_change) >= DEBOUNCE_TKS) {
-            sw2_last_change = now;
-
-            if (!sw2 && sw2_prev) { // RELEASE edge
-                send_word_gap();
+        // UI-TILAN AIKAKATKAISU (TIMEOUT)
+        // Jos odotellaan tuplaklikkiä, mutta aika meni umpeen -> Se olikin ykkösklikki
+        if (sw1_pending_double && (now - sw1_release_time) > DOUBLE_TKS) {
+            sw1_pending_double = false;
+            
+            if (currentState == STATE_IDLE || currentState == STATE_MENU) {
+                // Aika loppui UI-tilassa -> SCROLL
+                send_ui_cmd(UI_CMD_SCROLL);
+            } 
+            else {
+                // Morse-tilassa merkki lähetettiin jo painalluksesta, 
+                // joten timeout ei tee tässä mitään (paitsi nollaa flagin).
             }
-            sw2_prev = sw2;
+        }
+
+        // --------------------------------------------
+        // 2. LUE PINNIT JA DEBOUNCE (SW2)
+        // --------------------------------------------
+        bool sw2_raw = is_pressed(SW2_PIN);
+
+        if (sw2_raw != sw2_phys_prev) {
+            sw2_last_edge = now;
+        }
+        sw2_phys_prev = sw2_raw;
+
+        if ((now - sw2_last_edge) >= DEBOUNCE_TKS) {
+            if (sw2_raw != sw2_stable) {
+                sw2_stable = sw2_raw;
+
+                // --- SW2 VAPAUTETTU (Rising Edge) ---
+                // Reagoidaan vasta vapautukseen, tuntuu mukavammalta valikoissa
+                if (!sw2_stable) {
+                    
+                    if (currentState == STATE_IDLE || currentState == STATE_MENU) {
+                        // --- UI TILA: SELECT ---
+                        send_ui_cmd(UI_CMD_SELECT);
+                    } 
+                    else {
+                        // --- MORSE TILA: GAP ---
+                        send_morse_symbol(GAP_WORD);
+                    }
+                }
+            }
         }
 
         vTaskDelay(SCAN_TICKS);

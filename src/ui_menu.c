@@ -1,11 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "hardware/gpio.h"
-#include "hardware/i2c.h"
-#include "FreeRTOS.h"
-#include "task.h"
-
 #include "tkjhat/ssd1306.h"
 #include "icons.h"
 #include "ui_menu.h"
@@ -41,8 +36,7 @@ static bool need_redraw = true;
 static ssd1306_t* g_disp = NULL;
 static ui_menu_callbacks_t g_cbs = {0};
 
-static bool g_scroll_active_low = true;
-static bool g_select_active_low = true;
+// (Huom: g_scroll_active_low ym. poistettu koska button_task hoitaa logiikan)
 
 // ---------- Invert-apurit ----------
 static void ssd1306_invert_rect(ssd1306_t *p, int x, int y, int w, int h){
@@ -105,42 +99,8 @@ static inline int center_x_for(const char *s, int scale, int screen_w){
 }
 
 // ---------- Nappiapu ----------
-static inline bool btn_pressed_with_pol(uint pin, bool active_low){
-    bool l = gpio_get(pin);
-    return active_low ? (l == 0) : (l == 1);
-}
-static bool read_button_press_pin(uint pin, bool active_low){
-    if (btn_pressed_with_pol(pin, active_low)) {
-        vTaskDelay(pdMS_TO_TICKS(UI_DEBOUNCE_MS));
-        if (btn_pressed_with_pol(pin, active_low)) {
-            while (btn_pressed_with_pol(pin, active_low)) vTaskDelay(pdMS_TO_TICKS(1));
-            return true;
-        }
-    }
-    return false;
-}
-static int poll_scroll_click_event(void){
-    static bool last_read_pressed = false;
-    static bool stable_pressed = false;
-    static uint32_t last_edge_ms = 0;
-    static uint32_t last_release_ms = 0;
-    static int click_count = 0;
-
-    int event = 0;
-    uint32_t now = to_ms_since_boot(get_absolute_time());
-    bool pressed_now = btn_pressed_with_pol(UI_BTN_SCROLL_PIN, g_scroll_active_low);
-
-    if (pressed_now != last_read_pressed) { last_read_pressed = pressed_now; last_edge_ms = now; }
-    if ((now - last_edge_ms) >= UI_DEBOUNCE_MS && pressed_now != stable_pressed) {
-        stable_pressed = pressed_now;
-        if (!stable_pressed) { click_count++; last_release_ms = now; }
-    }
-    if (click_count >= 2) { event = 2; click_count = 0; }
-    else if (click_count == 1) {
-        if ((now - last_release_ms) > UI_DOUBLE_CLICK_MS) { event = 1; click_count = 0; }
-    }
-    return event;
-}
+// (Tämä osio on nyt button_taskin vastuulla, joten poistimme pollaus-koodit täältä
+//  jotta UI pysyy "puhtaana" ja sensor_task ei hajoa.)
 
 // ---------- Piirto ----------
 static void draw_header(ssd1306_t *disp, const char *txt){
@@ -209,12 +169,8 @@ static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state
     ssd1306_draw_string(disp, (uint32_t)x, (uint32_t)y, scale, msg);
     ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H);
     ssd1306_show(disp);
-    vTaskDelay(pdMS_TO_TICKS(900));
-
-    g_state = ret;
-    ssd1306_clear(disp);
-    ssd1306_show(disp);
-    need_redraw = true;
+    // HUOM: Emme voi käyttää pitkää viivettä tässä ettei UI task blockaannu liikaa,
+    // mutta lyhyt visuaalinen palaute on ok.
 }
 
 // --- KORJATTU FUNKTIO: Automaattinen skaalaus ---
@@ -244,33 +200,15 @@ void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs){
     g_disp = disp;
     if (cbs) g_cbs = *cbs;
 
-    gpio_init(UI_BTN_SCROLL_PIN);
-    gpio_set_function(UI_BTN_SCROLL_PIN, GPIO_FUNC_SIO);
-    gpio_set_dir(UI_BTN_SCROLL_PIN, GPIO_IN);
-
-    gpio_init(UI_BTN_SELECT_PIN);
-    gpio_set_function(UI_BTN_SELECT_PIN, GPIO_FUNC_SIO);
-    gpio_set_dir(UI_BTN_SELECT_PIN, GPIO_IN);
-
-#if UI_DETECT_BUTTON_POLARITY
-#ifndef UI_SCROLL_ACTIVE_LOW
-    gpio_disable_pulls(UI_BTN_SCROLL_PIN); vTaskDelay(pdMS_TO_TICKS(2));
-    g_scroll_active_low = gpio_get(UI_BTN_SCROLL_PIN);
-#endif
-#ifndef UI_SELECT_ACTIVE_LOW
-    gpio_disable_pulls(UI_BTN_SELECT_PIN); vTaskDelay(pdMS_TO_TICKS(2));
-    g_select_active_low = gpio_get(UI_BTN_SELECT_PIN);
-#endif
-#endif
-
-    if (g_scroll_active_low) gpio_pull_up(UI_BTN_SCROLL_PIN); else gpio_pull_down(UI_BTN_SCROLL_PIN);
-    if (g_select_active_low) gpio_pull_up(UI_BTN_SELECT_PIN); else gpio_pull_down(UI_BTN_SELECT_PIN);
+    // (GPIO init poistettu, button_task hoitaa)
 
     g_state = UI_STATE_MAIN_MENU;
     sel_main = 0; sel_connect = 0; sel_usb = 0; sel_confirm = 1; need_redraw = true;
+    draw_ui(g_disp);
 }
 
-void ui_menu_poll(void){
+// TÄMÄ ON KORVATTU ui_menu_poll -> ui_menu_process_cmd
+void ui_menu_process_cmd(ui_cmd_t cmd){
     if (!g_disp) return;
 
     ui_state_t state_before = g_state;
@@ -279,21 +217,24 @@ void ui_menu_poll(void){
     int connect_before = sel_connect;
     int usb_before = sel_usb;
 
-    int scroll_evt = poll_scroll_click_event();
+    // Käännetään viesti logiikaksi (sama logiikka kuin aiemmassa pollissa)
+    // scroll_evt = 1 -> UI_CMD_SCROLL
+    // scroll_evt = 2 -> UI_CMD_SCROLL_BACK (Tuplaklikki)
+    // select -> UI_CMD_SELECT
 
     if (g_state == UI_STATE_MAIN_MENU) {
-        if (scroll_evt == 1) sel_main = (sel_main + 1) % main_count;
-        if (read_button_press_pin(UI_BTN_SELECT_PIN, g_select_active_low)) {
+        if (cmd == UI_CMD_SCROLL) sel_main = (sel_main + 1) % main_count;
+        if (cmd == UI_CMD_SELECT) {
             if (sel_main == 0) { g_state = UI_STATE_CONNECT_MENU; sel_connect = 0; }
             else if (sel_main == 2) { g_state = UI_STATE_CONFIRM_SHUTDOWN; sel_confirm = 1; }
             else { show_selection_and_return(g_disp, "Setup selected", UI_STATE_MAIN_MENU); }
         }
 
     } else if (g_state == UI_STATE_CONNECT_MENU) {
-        if (scroll_evt == 2) g_state = UI_STATE_MAIN_MENU;
-        else if (scroll_evt == 1) sel_connect = (sel_connect + 1) % connect_count;
+        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU;
+        else if (cmd == UI_CMD_SCROLL) sel_connect = (sel_connect + 1) % connect_count;
 
-        if (read_button_press_pin(UI_BTN_SELECT_PIN, g_select_active_low)) {
+        if (cmd == UI_CMD_SELECT) {
             if (sel_connect == 0) { 
                 g_state = UI_STATE_USB_MENU; 
                 sel_usb = 0; 
@@ -305,10 +246,10 @@ void ui_menu_poll(void){
         }
     
     } else if (g_state == UI_STATE_USB_MENU) {
-        if (scroll_evt == 2) g_state = UI_STATE_CONNECT_MENU;
-        else if (scroll_evt == 1) sel_usb = (sel_usb + 1) % usb_count;
+        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_CONNECT_MENU;
+        else if (cmd == UI_CMD_SCROLL) sel_usb = (sel_usb + 1) % usb_count;
 
-        if (read_button_press_pin(UI_BTN_SELECT_PIN, g_select_active_low)) {
+        if (cmd == UI_CMD_SELECT) {
             if (sel_usb == 0) {
                 if (g_cbs.on_usb_send) g_cbs.on_usb_send();
                 show_selection_and_return(g_disp, "Sending...", UI_STATE_MAIN_MENU);
@@ -319,9 +260,9 @@ void ui_menu_poll(void){
         }
 
     } else if (g_state == UI_STATE_CONFIRM_SHUTDOWN) {
-        if (scroll_evt == 2) g_state = UI_STATE_MAIN_MENU;
-        else if (scroll_evt == 1) sel_confirm = (sel_confirm + 1) % confirm_count;
-        if (read_button_press_pin(UI_BTN_SELECT_PIN, g_select_active_low)) {
+        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU;
+        else if (cmd == UI_CMD_SCROLL) sel_confirm = (sel_confirm + 1) % confirm_count;
+        if (cmd == UI_CMD_SELECT) {
             if (sel_confirm == 0) perform_shutdown(g_disp);
             else g_state = UI_STATE_MAIN_MENU;
         }
