@@ -7,7 +7,7 @@
 #include "queue.h"
 #include "event.h"
 
-extern QueueHandle_t symbolQ;
+extern QueueHandle_t morseQ;
 
 // Tune these after testing
 #define SAMPLE_PERIOD_MS     10      // 100 Hz
@@ -139,7 +139,7 @@ void sensorTask(void *pvParameters)
                     }
 
                     // Send symbol to queue (non-blocking)
-                    xQueueSend(symbolQ, &ev, 0);
+                    xQueueSend(morseQ, &ev, 0);
                 }
                 
                 // else: silently ignore tiny or weird bursts

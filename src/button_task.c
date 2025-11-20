@@ -7,7 +7,7 @@
 #include "button_task.h"
 #include "event.h"        // symbol_ev_t { DOT, DASH, GAP_CHAR, GAP_WORD, END_MSG }
 
-extern QueueHandle_t symbolQ;
+extern QueueHandle_t morseQ;
 
 // ---- Tunables ----
 #define SCAN_MS       20      // scan period
@@ -22,7 +22,7 @@ extern QueueHandle_t symbolQ;
 static inline void send_letter_gap(void)
 {
     symbol_ev_t ev = GAP_CHAR;
-    xQueueSend(symbolQ, &ev, 0);
+    xQueueSend(morseQ, &ev, 0);
     putchar(' ');
     printf(" (letter)\r\n");
 }
@@ -30,7 +30,7 @@ static inline void send_letter_gap(void)
 static inline void send_word_gap(void)
 {
     symbol_ev_t ev = GAP_WORD;
-    xQueueSend(symbolQ, &ev, 0);
+    xQueueSend(morseQ, &ev, 0);
     putchar(' ');
     putchar(' ');
     printf(" (word)\r\n");
@@ -39,7 +39,7 @@ static inline void send_word_gap(void)
 static inline void send_end_msg(void)
 {
     symbol_ev_t ev = END_MSG;
-    xQueueSend(symbolQ, &ev, 0);
+    xQueueSend(morseQ, &ev, 0);
     putchar(' ');
     putchar(' ');
     putchar(' ');
