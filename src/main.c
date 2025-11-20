@@ -71,7 +71,7 @@ int main(void) {
     xTaskCreate(stateMachineTask, "State", 1024, NULL, 2, NULL);
 
     // Create UI task
-    // xTaskCreate(ui_task, "UI", 2048, NULL, 2, NULL);
+    xTaskCreate(ui_task, "UI", 2048, NULL, 2, NULL);
     
     // Create Sensor Task
     xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);

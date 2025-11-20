@@ -9,7 +9,6 @@
 #include "state_machine.h" // currentState
 
 extern QueueHandle_t morseQ;
->>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 
 // ---- Tunables ----
 #define SCAN_MS       20      // Kuinka usein pinnejä luetaan (10ms on hyvä)
@@ -21,20 +20,6 @@ extern QueueHandle_t morseQ;
 #define DEBOUNCE_TKS  (pdMS_TO_TICKS(DEBOUNCE_MS))
 #define DOUBLE_TKS    (pdMS_TO_TICKS(DOUBLE_MS))
 
-<<<<<<< HEAD
-// Pinnien määrittely (varmistus, jos ei SDK:ssa)
-#ifndef SW1_PIN
-#define SW1_PIN 6
-#endif
-#ifndef SW2_PIN
-#define SW2_PIN 7
-#endif
-
-// Oletus: Napit kytketty maahan (GND) ja Pull-Up päällä.
-// 0 = Painettu, 1 = Vapaa.
-static bool is_pressed(uint pin) {
-    return !gpio_get(pin);
-=======
 // Helpers: send events to the queue (and print for debug)
 static inline void send_letter_gap(void)
 {
@@ -43,21 +28,8 @@ static inline void send_letter_gap(void)
     xQueueSend(morseQ, &gap_char, 0);
     // putchar(' ');
     // printf(" (letter)\r\n");
->>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 }
 
-<<<<<<< HEAD
-// ---- Helpers: send events ----
-
-// Lähettää Morse-symbolin
-static void send_morse_symbol(symbol_ev_t sym) {
-    xQueueSend(morseQ, &sym, 0);
-    // Debug-tulostus konsoliin
-    if (sym == DOT) printf(".\n");
-    else if (sym == DASH) printf("-\n");
-    else if (sym == GAP_WORD) printf(" [WORD GAP]\n");
-    else if (sym == END_MSG) printf(" [END]\n");
-=======
 static inline void send_word_gap(void)
 {
     // symbol_ev_t ev = GAP_WORD;
@@ -66,14 +38,8 @@ static inline void send_word_gap(void)
     // putchar(' ');
     // putchar(' ');
     // printf(" (word)\r\n");
->>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 }
 
-<<<<<<< HEAD
-// Lähettää UI-komennon
-static void send_ui_cmd(ui_cmd_t cmd) {
-    xQueueSend(uiQ, &cmd, 0);
-=======
 static inline void send_end_msg(void)
 {
     // symbol_ev_t ev = END_MSG;
@@ -83,7 +49,6 @@ static inline void send_end_msg(void)
     // putchar(' ');
     // putchar(' ');
     // printf(" (END)\r\n");
->>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 }
 
 void buttonTask(void *pvParameters)
