@@ -5,6 +5,7 @@
 #include "tkjhat/sdk.h"
 #include "sensor_task.h"
 #include "queue.h"
+#include "event.h"
 
 extern QueueHandle_t symbolQ;
 
@@ -125,21 +126,22 @@ void sensorTask(void *pvParameters)
                 if (burst_samples >= MIN_BURST_SAMPLES &&
                     fabsf(axis_avg) > AXIS_MAG_THRESH)
                 {
-                    char sym;
+                    symbol_ev_t ev;
 
                     if (axis_avg > 0.0f) {
                         // DASH
-                        sym = '-';
-                        printf("-");   // print the actual dash
+                        ev = DASH;
+                        printf("-");    // print actual dash
                     } else {
                         // DOT
-                        sym = '.';
-                        printf(".");   // print the actual dot
+                        ev = DOT;
+                        printf(".");    // print actual dot
                     }
 
-                    // Send symbol to the queue (non-blocking)
-                    xQueueSend(symbolQ, &sym, 0);
+                    // Send symbol to queue (non-blocking)
+                    xQueueSend(symbolQ, &ev, 0);
                 }
+                
                 // else: silently ignore tiny or weird bursts
 
                 // Go back to idle and reset accumulators
