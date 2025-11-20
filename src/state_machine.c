@@ -14,7 +14,7 @@ void stateMachineTask(void *pvParameters) {
             case STATE_IDLE:
                 // Idle logic
                 break;
-            case STATE_SELECT_MODE:
+            case STATE_MENU:
                 // Mode selection logic
                 break;
             case STATE_USB_CONNECTED:

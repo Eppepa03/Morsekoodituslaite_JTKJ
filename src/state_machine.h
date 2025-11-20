@@ -1,7 +1,7 @@
 #pragma once
 typedef enum {
     STATE_IDLE,
-    STATE_SELECT_MODE,
+    STATE_MENU,
     STATE_USB_CONNECTED,
     STATE_WIFI_CONNECTED
 } State_t;
