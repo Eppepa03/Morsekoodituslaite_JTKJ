@@ -1,16 +1,25 @@
 #include "FreeRTOS.h"
 #include "task.h"
-#include "tkjhat/ssd1306.h"
+#include "queue.h"
 #include "tkjhat/ssd1306.h"
 #include "ui_menu.h"
 #include "tkjhat/sdk.h"
+#include "event.h"
+#include "state_machine.h"
 #include <stdio.h>
 
+extern QueueHandle_t uiQ; // UUSI
 static ssd1306_t disp;
 
 // UUDET CALLBACKIT
-static void on_usb_send(void)    { printf("USB Send valittu\n"); }
-static void on_usb_receive(void) { printf("USB Receive valittu\n"); }
+static void on_usb_send(void)    { 
+    printf("USB Send valittu\n"); 
+    changeState(STATE_USB_CONNECTED); 
+}
+static void on_usb_receive(void) { 
+    printf("USB Receive valittu\n"); 
+    changeState(STATE_USB_CONNECTED); 
+}
 
 static void on_wireless(void) { printf("Wireless valittu\n"); }
 static void on_shutdown(void) { printf("Shutdown valittu\n"); }
@@ -34,24 +43,23 @@ void ui_task(void *params) {
 
     // Splash
     ssd1306_clear(&disp);
-    ssd1306_draw_string(&disp, 0, 0, 1, "     TERVETULOA!");
+    ssd1306_draw_string(&disp, 0, 0, 1, "    TERVETULOA!");
     ssd1306_show(&disp);
-    vTaskDelay(pdMS_TO_TICKS(1500)); // 1.5 s splash
+    vTaskDelay(pdMS_TO_TICKS(1500)); 
 
     // UI käyntiin
     ui_menu_callbacks_t callbacks = {
-        .on_usb_send = on_usb_send,       // UUSI
-        .on_usb_receive = on_usb_receive, // UUSI
+        .on_usb_send = on_usb_send,       
+        .on_usb_receive = on_usb_receive, 
         .on_connect_wireless = on_wireless,
         .on_shutdown = on_shutdown
     };
     ui_menu_init(&disp, &callbacks);
 
-    ui_menu_poll();
-    vTaskDelay(pdMS_TO_TICKS(50));
-
+    ui_cmd_t cmd;
     while (1) {
-        ui_menu_poll();
-        vTaskDelay(pdMS_TO_TICKS(10));
+        if (xQueueReceive(uiQ, &cmd, portMAX_DELAY) == pdTRUE) {
+            ui_menu_process_cmd(cmd);
+        }
     }
 }

@@ -20,6 +20,7 @@ extern State_t current_state;
 
 QueueHandle_t morseQ;
 QueueHandle_t stateQ;
+QueueHandle_t uiQ;
 
 // static void testTask(void *arg) {
 //     char buf[BUFFER_SIZE];
@@ -60,6 +61,10 @@ int main(void) {
     stateQ = xQueueCreate(64, sizeof(State_t));
     configASSERT(stateQ != NULL);
 
+    // Jono UI-komennoille
+    uiQ = xQueueCreate(10, sizeof(ui_cmd_t));
+    configASSERT(uiQ != NULL);
+
     currentState = STATE_IDLE;
 
     // State machine
@@ -68,13 +73,15 @@ int main(void) {
     // Create UI task
     // xTaskCreate(ui_task, "UI", 2048, NULL, 2, NULL);
     
-
     // Create Sensor Task
     xTaskCreate(sensorTask, "Sensor", 2048, NULL, 1, NULL);
 
-
     // Create button task
+<<<<<<< HEAD
+    xTaskCreate(buttonTask, "Buttons", 1024, NULL, 3, NULL);
+=======
     xTaskCreate(buttonTask, "Buttons", 1024, NULL, 1, NULL);
+>>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 
     // Create Usb task
     TaskHandle_t handle_usb = NULL;
