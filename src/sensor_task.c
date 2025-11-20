@@ -131,15 +131,17 @@ void sensorTask(void *pvParameters)
                     if (axis_avg > 0.0f) {
                         // DASH
                         ev = DASH;
-                        printf("-");    // print actual dash
+                        // printf("-");    // print actual dash
                     } else {
                         // DOT
                         ev = DOT;
-                        printf(".");    // print actual dot
+                        // printf(".");    // print actual dot
                     }
 
                     // Send symbol to queue (non-blocking)
-                    xQueueSend(morseQ, &ev, 0);
+
+                    char symbol = (ev == DOT) ? '.' : '-';
+                    xQueueSend(morseQ, &symbol, 0);
                 }
                 
                 // else: silently ignore tiny or weird bursts

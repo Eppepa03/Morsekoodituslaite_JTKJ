@@ -21,29 +21,32 @@ extern QueueHandle_t morseQ;
 // Helpers: send events to the queue (and print for debug)
 static inline void send_letter_gap(void)
 {
-    symbol_ev_t ev = GAP_CHAR;
-    xQueueSend(morseQ, &ev, 0);
-    putchar(' ');
-    printf(" (letter)\r\n");
+    // symbol_ev_t ev = GAP_CHAR;
+    char gap_char[] = " ";
+    xQueueSend(morseQ, &gap_char, 0);
+    // putchar(' ');
+    // printf(" (letter)\r\n");
 }
 
 static inline void send_word_gap(void)
 {
-    symbol_ev_t ev = GAP_WORD;
-    xQueueSend(morseQ, &ev, 0);
-    putchar(' ');
-    putchar(' ');
-    printf(" (word)\r\n");
+    // symbol_ev_t ev = GAP_WORD;
+    char gap_word[] = "  ";
+    xQueueSend(morseQ, &gap_word, 0);
+    // putchar(' ');
+    // putchar(' ');
+    // printf(" (word)\r\n");
 }
 
 static inline void send_end_msg(void)
 {
-    symbol_ev_t ev = END_MSG;
-    xQueueSend(morseQ, &ev, 0);
-    putchar(' ');
-    putchar(' ');
-    putchar(' ');
-    printf(" (END)\r\n");
+    // symbol_ev_t ev = END_MSG;
+    char end_msg[]= "   \n";
+    xQueueSend(morseQ, &end_msg, 0);
+    // putchar(' ');
+    // putchar(' ');
+    // putchar(' ');
+    // printf(" (END)\r\n");
 }
 
 void buttonTask(void *pvParameters)
