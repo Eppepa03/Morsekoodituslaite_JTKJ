@@ -8,12 +8,6 @@
 #include "event.h"        // symbol_ev_t (Morse) ja ui_cmd_t (UI)
 #include "state_machine.h" // currentState
 
-<<<<<<< HEAD
-// Tuodaan jonot näkyviin main.c:stä
-extern QueueHandle_t morseQ;
-extern QueueHandle_t uiQ;
-extern volatile State_t currentState;
-=======
 extern QueueHandle_t morseQ;
 >>>>>>> 6150020686519e8f5dd1b54b58933317b73c71e5
 
