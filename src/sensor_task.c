@@ -6,8 +6,11 @@
 #include "sensor_task.h"
 #include "queue.h"
 #include "event.h"
+#include "state_machine.h"
 
+// Haetaan ulkopuoliset jonot morseaakkosille ja tilalle
 extern QueueHandle_t morseQ;
+extern volatile State_t currentState;
 
 // Tune these after testing
 #define SAMPLE_PERIOD_MS     10      // 100 Hz
@@ -21,6 +24,9 @@ extern QueueHandle_t morseQ;
 #define USE_GX 0
 #define USE_GY 0
 #define USE_GZ 1   // using gz as you had before
+
+// Initialize state
+sensor_state_t sensorState = SENSOR_STATE_IDLE;
 
 void sensorTask(void *pvParameters)
 {
@@ -44,13 +50,6 @@ void sensorTask(void *pvParameters)
         }
     }
 
-    enum {
-        STATE_IDLE = 0,
-        STATE_IN_BURST
-    };
-
-    int state = STATE_IDLE;
-
     // Accumulators for one flick burst
     float sum_gx = 0.0f;
     float sum_gy = 0.0f;
@@ -66,12 +65,12 @@ void sensorTask(void *pvParameters)
         // Total gyro magnitude
         float gmag = sqrtf(gx*gx + gy*gy + gz*gz);
 
-        switch (state)
+        switch (sensorState)
         {
-        case STATE_IDLE:
+        case SENSOR_STATE_IDLE:
             // Wait for big enough motion to start a flick
             if (gmag > GYRO_START_THRESH) {
-                state = STATE_IN_BURST;
+                sensorState = SENSOR_STATE_IN_BURST;
                 sum_gx = gx;
                 sum_gy = gy;
                 sum_gz = gz;
@@ -84,7 +83,7 @@ void sensorTask(void *pvParameters)
             }
             break;
 
-        case STATE_IN_BURST:
+        case SENSOR_STATE_IN_BURST:
             // Accumulate while we're in a burst
             sum_gx += gx;
             sum_gy += gy;
@@ -131,23 +130,19 @@ void sensorTask(void *pvParameters)
                     if (axis_avg > 0.0f) {
                         // DASH
                         ev = DASH;
-                        // printf("-");    // print actual dash
                     } else {
                         // DOT
                         ev = DOT;
-                        // printf(".");    // print actual dot
                     }
 
                     // Send symbol to queue (non-blocking)
-
-                    char symbol = (ev == DOT) ? '.' : '-';
-                    xQueueSend(morseQ, &symbol, 0);
+                    xQueueSend(morseQ, &ev, 0);
                 }
                 
                 // else: silently ignore tiny or weird bursts
 
                 // Go back to idle and reset accumulators
-                state = STATE_IDLE;
+                sensorState = SENSOR_STATE_IDLE;
                 sum_gx = sum_gy = sum_gz = 0.0f;
                 burst_samples = 0;
                 below_end_count = 0;

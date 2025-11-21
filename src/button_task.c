@@ -58,8 +58,17 @@ static bool is_pressed(unsigned int pin) {
 }
 
 // 2. Lähettää Morse-jonoon
-static void send_morse_symbol(symbol_ev_t sym) {
-    xQueueSend(morseQ, &sym, 0);
+static inline void morse_send_character_gap(void) {
+    symbol_ev_t ev = GAP_CHAR;
+    xQueueSend(morseQ, &ev, 0);
+}
+static void morse_send_word_gap(void) {
+    symbol_ev_t ev = GAP_WORD;
+    xQueueSend(morseQ, &ev, 0);
+}
+static inline void morse_send_end_msg(void) {
+    symbol_ev_t ev = END_MSG;
+    xQueueSend(morseQ, &ev, 0);
 }
 
 // 3. Lähettää UI-jonoon
@@ -140,18 +149,16 @@ void buttonTask(void *pvParameters)
                     else {
                         // --- MORSE-TILA ---
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
-                            // Tuplaklikki -> END MESSAGE / EXIT
-                            send_morse_symbol(END_MSG);
+                            // Tuplaklikki -> Morse END_MSG
+                            morse_send_end_msg();
                             sw1_pending_double = false;
                         } 
                         else {
-                            // Yksittäinen painallus -> Morse merkki
+                            // Yksittäinen painallus -> Morse GAP_CHAR
                             sw1_pending_double = true;
                             sw1_release_time = now;
 
-                            // Lyhyt vs Pitkä
-                            if (duration > DASH_THRES_MS) send_morse_symbol(DASH);
-                            else                          send_morse_symbol(DOT);
+                            morse_send_character_gap();
                         }
                     }
                 }
@@ -189,8 +196,8 @@ void buttonTask(void *pvParameters)
                         send_ui_cmd(UI_CMD_SELECT);
                     } 
                     else {
-                        // Morse: Word Gap
-                        send_morse_symbol(GAP_WORD);
+                        // -> Morse GAP_WORD
+                        morse_send_word_gap();
                     }
                 }
             }

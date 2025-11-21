@@ -55,17 +55,17 @@ int main(void) {
     init_hat_sdk();
     init_i2c_default();
 
+    // Jono morsemerkeille
     morseQ = xQueueCreate(64, sizeof(symbol_ev_t));
     configASSERT(morseQ != NULL);
 
+    // Jono tilakomennoille
     stateQ = xQueueCreate(64, sizeof(State_t));
     configASSERT(stateQ != NULL);
 
     // Jono UI-komennoille
     uiQ = xQueueCreate(10, sizeof(ui_cmd_t));
     configASSERT(uiQ != NULL);
-
-    currentState = STATE_IDLE;
 
     // State machine
     xTaskCreate(stateMachineTask, "State", 1024, NULL, 2, NULL);
