@@ -14,6 +14,7 @@ extern QueueHandle_t uiQ;
 
 void usbTask(void *args) {
     symbol_ev_t morseChar;
+    char message[8];
     for (;;) {
         tud_task(); // Käytetään TinyUSB:tä. Tämän pitää kutsua tehtävän alussa, jotta USB stack pysyy pystyssä.
         
@@ -21,18 +22,17 @@ void usbTask(void *args) {
         if (xQueueReceive(morseQ, &morseChar, 0)) {
 
             // Lähetetään aakkoset TinyUSB:n avulla serial monitorille
-            if (tud_cdc_connected()) {
+            if (tud_cdc_connected() && currentState == STATE_USB_CONNECTED) {
 
-                // Decoodataan eventit
-                switch(morseChar) {
-                    case DOT: putchar('.'); break;
-                    case DASH: putchar('-'); break;
-                    case GAP_CHAR: putchar(' '); break;
-                    case GAP_WORD: printf("  "); break;
-                    case END_MSG: printf("   \r\n"); break; // tarkista vielä ovatko nämä oikeat "komennot"! (siis tarkoittaako tuo "   \r\n" lopetusta)
+                switch (morseChar) {
+                    case DOT: strcpy(message, "."); break;
+                    case DASH: strcpy(message, "-"); break;
+                    case GAP_CHAR: strcpy(message, " "); break;
+                    case GAP_WORD: strcpy(message, "  "); break;
+                    case END_MSG: strcpy(message, "\r\n"); break;
                 }
 
-                tud_cdc_write(&morseChar, 1);
+                tud_cdc_write(&message, strlen(message));
                 tud_cdc_write_flush();
             }
         }

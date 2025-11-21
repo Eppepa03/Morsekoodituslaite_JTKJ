@@ -45,7 +45,7 @@ void sensorTask(void *pvParameters)
 
     rc = ICM42670_start_with_default_values();
     if (rc != 0) { while (1) { printf("[SENSOR] IMU start FAIL\r\n"); vTaskDelay(1000); } }
-
+    
     // sum of gz values, samples and samples below the end threshold
     float sum_gz = 0.0f;
     int   burst_samples = 0;
@@ -53,9 +53,12 @@ void sensorTask(void *pvParameters)
 
     while (1)
     {
-        // Reads rensor values 
+        // Reads rensor values if the device is in STATE_USB_CONNECTED
         float ax, ay, az, gx, gy, gz, t;
-        ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
+        if (currentState == STATE_USB_CONNECTED) {
+            printf("Connected");
+            ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
+        }
 
         // Total gyro magnitude in degrees/s
         float gmag = sqrtf(gx*gx + gy*gy + gz*gz);
@@ -105,7 +108,7 @@ void sensorTask(void *pvParameters)
                     //  - avg_gz > 0  → DASH
                     //  - avg_gz < 0  → DOT
                     symbol_ev_t ev = (avg_gz > 0.0f) ? DASH : DOT;
-                    xQueueSend(morseQ, &ev, 0);
+                    xQueueSend(morseQ, &ev, portMAX_DELAY);
                 }
 
                 // Resets for the next flick and returns to idle state

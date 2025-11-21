@@ -143,7 +143,7 @@ void buttonTask(void *pvParameters)
                             sw1_release_time = now;
                         }
                     } 
-                    else {
+                    else if (currentState == STATE_USB_CONNECTED) {
                         // --- MORSE-TILA ---
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
                             // Tuplaklikki -> Morse END_MSG
@@ -157,6 +157,8 @@ void buttonTask(void *pvParameters)
 
                             morse_send_character_gap();
                         }
+                    } else {
+                        printf("Unknown state");
                     }
                 }
             }
