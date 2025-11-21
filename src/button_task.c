@@ -16,18 +16,8 @@
 
 // Haetaan ulkopuoliset jonot ja tila
 extern QueueHandle_t morseQ;
+extern QueueHandle_t stateQ;
 extern QueueHandle_t uiQ;
-extern volatile State_t currentState;
-
-// ---- Asetukset ----
-#define SCAN_MS       10      
-#define DEBOUNCE_MS   40      
-#define DOUBLE_MS     350     
-#define DASH_THRES_MS 200     
-
-#define SCAN_TICKS    (pdMS_TO_TICKS(SCAN_MS))
-#define DEBOUNCE_TKS  (pdMS_TO_TICKS(DEBOUNCE_MS))
-#define DOUBLE_TKS    (pdMS_TO_TICKS(DOUBLE_MS))
 
 // Määritellään pinnit käyttäen SDK:n vakioita.
 // Jos SDK ei jostain syystä määrittele niitä, käytetään varavaihtoehtoja.
@@ -47,6 +37,13 @@ extern volatile State_t currentState;
   #endif
 #endif
 
+// ---- Asetukset ----
+#define DEBOUNCE_MS   40      
+#define DOUBLE_MS     350         
+
+#define DEBOUNCE_TKS  (pdMS_TO_TICKS(DEBOUNCE_MS))
+#define DOUBLE_TKS    (pdMS_TO_TICKS(DOUBLE_MS))
+
 // ---------------------------------------------------------
 // APUFUNKTIOT (Nämä pitää olla ENNEN buttonTask-funktiota)
 // ---------------------------------------------------------
@@ -58,7 +55,7 @@ static bool is_pressed(unsigned int pin) {
 }
 
 // 2. Lähettää Morse-jonoon
-static inline void morse_send_character_gap(void) {
+static void morse_send_character_gap(void) {
     symbol_ev_t ev = GAP_CHAR;
     xQueueSend(morseQ, &ev, 0);
 }
@@ -66,7 +63,7 @@ static void morse_send_word_gap(void) {
     symbol_ev_t ev = GAP_WORD;
     xQueueSend(morseQ, &ev, 0);
 }
-static inline void morse_send_end_msg(void) {
+static void morse_send_end_msg(void) {
     symbol_ev_t ev = END_MSG;
     xQueueSend(morseQ, &ev, 0);
 }
@@ -203,6 +200,6 @@ void buttonTask(void *pvParameters)
             }
         }
 
-        vTaskDelay(SCAN_TICKS);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }

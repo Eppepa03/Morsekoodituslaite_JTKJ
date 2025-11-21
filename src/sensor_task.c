@@ -20,7 +20,7 @@
 
 // External queues
 extern QueueHandle_t morseQ;
-extern volatile State_t currentState;
+extern QueueHandle_t stateQ;
 
 // Tunable thresholds
 #define SAMPLE_PERIOD_MS     10      // Sampling rate 100 Hz

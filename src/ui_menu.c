@@ -2,8 +2,11 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "tkjhat/ssd1306.h"
-#include "icons.h"
 #include "ui_menu.h"
+#include "icons.h"
+// Lisätty nämä delaytä varten
+#include "FreeRTOS.h"
+#include "task.h"
 
 #define FONT_W 8
 #define FONT_H 8
@@ -17,6 +20,15 @@ static const int main_count = 3;
 static const char* connect_items[] = {"USB", "Wireless"};
 static const int connect_count = 2;
 
+// Setup-valikko
+// "Back" poistettu, teksti pidennetty.
+static const char* setup_items[] = {"Screen Orientation"}; 
+static const int setup_count = 1;
+
+// Orientation-valikko
+static const char* orient_items[] = {"Normal", "Flipped"};
+static const int orient_count = 2;
+
 // USB-valikko
 static const char* usb_items[] = {"Send", "Receive"};
 static const int usb_count = 2;
@@ -29,14 +41,14 @@ static const int confirm_count = 2;
 static volatile ui_state_t g_state = UI_STATE_MAIN_MENU;
 static volatile int sel_main = 0;
 static volatile int sel_connect = 0;
+static volatile int sel_setup = 0;
+static volatile int sel_orient = 0;
 static volatile int sel_usb = 0;
 static volatile int sel_confirm = 1;
 static bool need_redraw = true;
 
 static ssd1306_t* g_disp = NULL;
 static ui_menu_callbacks_t g_cbs = {0};
-
-// (Huom: g_scroll_active_low ym. poistettu koska button_task hoitaa logiikan)
 
 // ---------- Invert-apurit ----------
 static void ssd1306_invert_rect(ssd1306_t *p, int x, int y, int w, int h){
@@ -58,18 +70,7 @@ static void ssd1306_invert_rect(ssd1306_t *p, int x, int y, int w, int h){
     }
 }
 
-// ---------- Perusgrafiikka ----------
-static inline void putp(ssd1306_t *p, int x, int y, uint8_t c) {
-    if (c) ssd1306_draw_pixel(p, (uint32_t)x, (uint32_t)y);
-    else   ssd1306_clear_pixel(p, (uint32_t)x, (uint32_t)y);
-}
-static void draw_hline(ssd1306_t *p, int x, int y, int w, uint8_t c) {
-    for (int i = 0; i < w; i++) putp(p, x + i, y, c);
-}
-static void draw_filled_rect(ssd1306_t *p, int x, int y, int w, int h, uint8_t c) {
-    for (int j = 0; j < h; j++) draw_hline(p, x, y + j, w, c);
-}
-
+// ---------- Grafiikka ----------
 static inline void ssd1306_draw_bitmap_1bpp(ssd1306_t *d,int x,int y,int w,int h,const uint8_t *bits){
     int stride = (w + 7) >> 3;
     for (int yy = 0; yy < h; yy++) {
@@ -98,10 +99,6 @@ static inline int center_x_for(const char *s, int scale, int screen_w){
     int x = (screen_w - w) / 2; return x < 0 ? 0 : x;
 }
 
-// ---------- Nappiapu ----------
-// (Tämä osio on nyt button_taskin vastuulla, joten poistimme pollaus-koodit täältä
-//  jotta UI pysyy "puhtaana" ja sensor_task ei hajoa.)
-
 // ---------- Piirto ----------
 static void draw_header(ssd1306_t *disp, const char *txt){
     int x = center_x_for(txt, 1, UI_OLED_W);
@@ -129,6 +126,23 @@ static void draw_ui(ssd1306_t *disp){
             if (i == sel_connect) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
         }
 
+    } else if (g_state == UI_STATE_SETUP_MENU) {
+        draw_header(disp, "Setup");
+        for (int i = 0; i < setup_count; i++) {
+            int y = 16 + i * LINE_H;
+            // PIIRRETÄÄN X=2 ETTÄ PITKÄ TEKSTI MAHTUU
+            ssd1306_draw_string(disp, 2, y + 4, 1, setup_items[i]);
+            if (i == sel_setup) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
+        }
+
+    } else if (g_state == UI_STATE_ORIENT_MENU) {
+        draw_header(disp, "Orientation");
+        for (int i = 0; i < orient_count; i++) {
+            int y = 16 + i * LINE_H;
+            ssd1306_draw_string(disp, 28, y + 4, 1, orient_items[i]);
+            if (i == sel_orient) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
+        }
+
     } else if (g_state == UI_STATE_USB_MENU) {
         draw_header(disp, "USB");
         for (int i = 0; i < usb_count; i++) {
@@ -150,17 +164,12 @@ static void draw_ui(ssd1306_t *disp){
     ssd1306_show(disp);
 }
 
-// --- KORJATTU FUNKTIO: Automaattinen skaalaus ---
 static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state_t ret){
     ssd1306_clear(disp);
     
     int len = text_chars(msg);
-    int scale = 2; // Oletus: iso fontti
-    
-    // Jos teksti on liian leveä isolle fontille (yli 8 merkkiä), vaihda pieneen fonttiin
-    if (text_pixel_width_chars(len, scale) > UI_OLED_W) {
-        scale = 1;
-    }
+    int scale = 2;
+    if (text_pixel_width_chars(len, scale) > UI_OLED_W) scale = 1;
 
     int w = text_pixel_width_chars(len, scale);
     int x = (UI_OLED_W - w) / 2; if (x < 0) x = 0;
@@ -169,29 +178,13 @@ static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state
     ssd1306_draw_string(disp, (uint32_t)x, (uint32_t)y, scale, msg);
     ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H);
     ssd1306_show(disp);
-    // HUOM: Emme voi käyttää pitkää viivettä tässä ettei UI task blockaannu liikaa,
-    // mutta lyhyt visuaalinen palaute on ok.
 }
 
-// --- KORJATTU FUNKTIO: Automaattinen skaalaus ---
 static void perform_shutdown(ssd1306_t *disp){
     ssd1306_clear(disp);
-    const char* msg = "Shutting down...";
-    
-    int len = text_chars(msg);
-    int scale = 2;
-    if (text_pixel_width_chars(len, scale) > UI_OLED_W) {
-        scale = 1;
-    }
-
-    int w = text_pixel_width_chars(len, scale);
-    int x = (UI_OLED_W - w) / 2; if (x < 0) x = 0;
-    int y = (UI_OLED_H - FONT_H * scale) / 2;
-
-    ssd1306_draw_string(disp, (uint32_t)x, (uint32_t)y, scale, msg);
+    ssd1306_draw_string(disp, 10, 28, 1, "Shutting down...");
     ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H);
     ssd1306_show(disp);
-    
     if (g_cbs.on_shutdown) g_cbs.on_shutdown();
 }
 
@@ -200,55 +193,82 @@ void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs){
     g_disp = disp;
     if (cbs) g_cbs = *cbs;
 
-    // (GPIO init poistettu, button_task hoitaa)
-
     g_state = UI_STATE_MAIN_MENU;
-    sel_main = 0; sel_connect = 0; sel_usb = 0; sel_confirm = 1; need_redraw = true;
+    sel_main = 0; 
+    sel_connect = 0; 
+    sel_setup = 0; 
+    sel_orient = 0;
+    sel_usb = 0; 
+    sel_confirm = 1; 
+    need_redraw = true;
+    
     draw_ui(g_disp);
 }
 
-// TÄMÄ ON KORVATTU ui_menu_poll -> ui_menu_process_cmd
 void ui_menu_process_cmd(ui_cmd_t cmd){
     if (!g_disp) return;
 
     ui_state_t state_before = g_state;
     int main_before = sel_main;
+    int setup_before = sel_setup;
+    int orient_before = sel_orient;
     int confirm_before = sel_confirm;
     int connect_before = sel_connect;
     int usb_before = sel_usb;
-
-    // Käännetään viesti logiikaksi (sama logiikka kuin aiemmassa pollissa)
-    // scroll_evt = 1 -> UI_CMD_SCROLL
-    // scroll_evt = 2 -> UI_CMD_SCROLL_BACK (Tuplaklikki)
-    // select -> UI_CMD_SELECT
 
     if (g_state == UI_STATE_MAIN_MENU) {
         if (cmd == UI_CMD_SCROLL) sel_main = (sel_main + 1) % main_count;
         if (cmd == UI_CMD_SELECT) {
             if (sel_main == 0) { g_state = UI_STATE_CONNECT_MENU; sel_connect = 0; }
+            else if (sel_main == 1) { g_state = UI_STATE_SETUP_MENU; sel_setup = 0; }
             else if (sel_main == 2) { g_state = UI_STATE_CONFIRM_SHUTDOWN; sel_confirm = 1; }
-            else { show_selection_and_return(g_disp, "Setup selected", UI_STATE_MAIN_MENU); }
         }
 
     } else if (g_state == UI_STATE_CONNECT_MENU) {
         if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU;
         else if (cmd == UI_CMD_SCROLL) sel_connect = (sel_connect + 1) % connect_count;
-
         if (cmd == UI_CMD_SELECT) {
-            if (sel_connect == 0) { 
-                g_state = UI_STATE_USB_MENU; 
-                sel_usb = 0; 
-            }
+            if (sel_connect == 0) { g_state = UI_STATE_USB_MENU; sel_usb = 0; }
             else { 
                 if (g_cbs.on_connect_wireless) g_cbs.on_connect_wireless(); 
                 show_selection_and_return(g_disp, "Coming soon!", UI_STATE_MAIN_MENU); 
             }
         }
     
+    } else if (g_state == UI_STATE_SETUP_MENU) { 
+        // --- Back poistettu, logiikka yksinkertaistettu ---
+        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU; // Ainoa tapa poistua
+        else if (cmd == UI_CMD_SCROLL) sel_setup = (sel_setup + 1) % setup_count;
+        
+        if (cmd == UI_CMD_SELECT) {
+            // Ainoa vaihtoehto on Screen Orientation
+            g_state = UI_STATE_ORIENT_MENU;
+            sel_orient = 0;
+        }
+
+    } else if (g_state == UI_STATE_ORIENT_MENU) {
+        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_SETUP_MENU;
+        else if (cmd == UI_CMD_SCROLL) sel_orient = (sel_orient + 1) % orient_count;
+        
+        if (cmd == UI_CMD_SELECT) {
+            if (sel_orient == 0) {
+                if (g_cbs.on_orient_normal) g_cbs.on_orient_normal();
+                show_selection_and_return(g_disp, "Set: Normal", UI_STATE_SETUP_MENU);
+            } else {
+                if (g_cbs.on_orient_flipped) g_cbs.on_orient_flipped();
+                show_selection_and_return(g_disp, "Set: Flipped", UI_STATE_SETUP_MENU);
+            }
+            
+            vTaskDelay(pdMS_TO_TICKS(500));
+            g_state = UI_STATE_SETUP_MENU;
+            // PAKOTA UUDELLEENPIIRTO HETI
+            need_redraw = true; 
+            draw_ui(g_disp); 
+        }
+
     } else if (g_state == UI_STATE_USB_MENU) {
         if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_CONNECT_MENU;
         else if (cmd == UI_CMD_SCROLL) sel_usb = (sel_usb + 1) % usb_count;
-
         if (cmd == UI_CMD_SELECT) {
             if (sel_usb == 0) {
                 if (g_cbs.on_usb_send) g_cbs.on_usb_send();
@@ -273,7 +293,10 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         main_before != sel_main ||
         confirm_before != sel_confirm ||
         connect_before != sel_connect ||
+        setup_before != sel_setup ||
+        orient_before != sel_orient ||
         usb_before != sel_usb) {
+        
         draw_ui(g_disp);
         need_redraw = false;
     }
@@ -283,5 +306,7 @@ void ui_menu_force_redraw(void){ need_redraw = true; }
 ui_state_t ui_menu_get_state(void){ return g_state; }
 int ui_menu_get_main_selection(void){ return sel_main; }
 int ui_menu_get_connect_selection(void){ return sel_connect; }
+int ui_menu_get_setup_selection(void){ return sel_setup; }
+int ui_menu_get_orient_selection(void){ return sel_orient; }
 int ui_menu_get_usb_selection(void){ return sel_usb; }
 int ui_menu_get_confirm_selection(void){ return sel_confirm; }

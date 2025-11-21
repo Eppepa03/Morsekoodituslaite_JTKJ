@@ -6,7 +6,7 @@ typedef enum {
     STATE_WIFI_CONNECTED
 } State_t;
 
-extern volatile State_t currentState;
+extern State_t currentState;
 
 void stateMachineTask(void *pvParameters);
 void changeState(State_t newState);

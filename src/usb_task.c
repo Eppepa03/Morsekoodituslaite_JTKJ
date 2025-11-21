@@ -5,11 +5,15 @@
 #include "tusb.h"
 #include "queue.h"
 #include "event.h"
+#include "state_machine.h"
 
+// Haetaan ulkopuoliset jonot ja tila
 extern QueueHandle_t morseQ;
+extern QueueHandle_t stateQ;
+extern QueueHandle_t uiQ;
 
 void usbTask(void *args) {
-    char morseChar;
+    symbol_ev_t morseChar;
     for (;;) {
         tud_task(); // Käytetään TinyUSB:tä. Tämän pitää kutsua tehtävän alussa, jotta USB stack pysyy pystyssä.
         
