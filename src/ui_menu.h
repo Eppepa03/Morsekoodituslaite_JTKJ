@@ -16,33 +16,36 @@ extern "C" {
 #define UI_OLED_H 64
 #endif
 
-// ... (Poistettu PIN-määritykset ja makrot, koska button_task hoitaa ne) ...
-
 typedef enum {
-  UI_STATE_MAIN_MENU = 0,
-  UI_STATE_CONNECT_MENU,
-  UI_STATE_USB_MENU,
-  UI_STATE_CONFIRM_SHUTDOWN
+    UI_STATE_MAIN_MENU = 0,
+    UI_STATE_CONNECT_MENU,
+    UI_STATE_SETUP_MENU,        // UUSI: Setup-päävalikko
+    UI_STATE_ORIENT_MENU,       // UUSI: Orientation-alavalikko
+    UI_STATE_USB_MENU,
+    UI_STATE_CONFIRM_SHUTDOWN
 } ui_state_t;
 
 typedef struct {
-  void (*on_connect_wireless)(void);
-  void (*on_usb_send)(void);    // UUSI: Send
-  void (*on_usb_receive)(void); // UUSI: Receive
-  void (*on_shutdown)(void);
+    void (*on_connect_wireless)(void);
+    void (*on_usb_send)(void);
+    void (*on_usb_receive)(void);
+    
+    // UUDET CALLBACKIT
+    void (*on_orient_normal)(void);
+    void (*on_orient_flipped)(void);
+    
+    void (*on_shutdown)(void);
 } ui_menu_callbacks_t;
 
-// Init ei ota enää pinnejä
 void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs);
-
-// Korvaa ui_menu_poll funktion tällä:
 void ui_menu_process_cmd(ui_cmd_t cmd);
-
 void ui_menu_force_redraw(void);
 
 ui_state_t ui_menu_get_state(void);
 int ui_menu_get_main_selection(void);
 int ui_menu_get_connect_selection(void);
+int ui_menu_get_setup_selection(void); // UUSI
+int ui_menu_get_orient_selection(void); // UUSI
 int ui_menu_get_usb_selection(void);
 int ui_menu_get_confirm_selection(void);
 
