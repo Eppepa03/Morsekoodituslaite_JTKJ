@@ -16,9 +16,10 @@ extern QueueHandle_t uiQ;
 static ssd1306_t disp;
 
 // UUDET CALLBACKIT
-static void on_usb_send(void)    { 
+static void on_usb_send(void) { 
     printf("USB Send valittu\n"); 
-    changeState(STATE_USB_CONNECTED); 
+    State_t nextState = STATE_USB_CONNECTED;
+    xQueueSend(stateQ, &nextState, 0); 
 }
 static void on_usb_receive(void) { 
     printf("USB Receive valittu\n"); 

@@ -4,6 +4,8 @@
 #include "tkjhat/ssd1306.h"
 #include "ui_menu.h"
 #include "icons.h"
+#include "FreeRTOS.h"
+#include "tkjhat/sdk.h"
 
 #define FONT_W 8
 #define FONT_H 8
@@ -275,7 +277,6 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
                 show_selection_and_return(g_disp, "Set: Flipped", UI_STATE_SETUP_MENU);
             }
             // Pieni viive, jotta käyttäjä ehtii nähdä vahvistuksen
-            vTaskDelay(pdMS_TO_TICKS(500));
             g_state = UI_STATE_SETUP_MENU; // Palataan Setuppiin
             need_redraw = true;
         }

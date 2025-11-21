@@ -70,6 +70,7 @@
         "pdm_microphone.h": "c",
         "pins.h": "c",
         "queue.h": "c",
-        "button_task.h": "c"
+        "button_task.h": "c",
+        "ui_menu.h": "c"
     }
 }
