@@ -128,6 +128,14 @@ void ssd1306_contrast(ssd1306_t *p, uint8_t val);
 void ssd1306_invert(ssd1306_t *p, uint8_t inv);
 
 /**
+    @brief rotate display 180 degrees
+
+    @param[in] p : instance of display
+    @param[in] rotated : true = rotated 180 (0xA1/0xC8), false = normal (0xA0/0xC0)
+*/
+void ssd1306_rotate(ssd1306_t *p, bool rotated);
+
+/**
 	@brief display buffer, should be called on change
 
 	@param[in] p : instance of display

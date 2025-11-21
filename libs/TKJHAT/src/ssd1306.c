@@ -303,4 +303,18 @@ void ssd1306_show(ssd1306_t *p) {
     *(p->buffer-1)=0x40;
 
     fancy_write(p->i2c_i, p->address, p->buffer-1, p->bufsize+1, "ssd1306_show");
+
+}
+
+void ssd1306_rotate(ssd1306_t *p, bool rotated) {
+    if (rotated) {
+        // Käännetty 180 astetta
+        ssd1306_write(p, SET_SEG_REMAP | 0x01);   // 0xA1
+        ssd1306_write(p, SET_COM_OUT_DIR | 0x08); // 0xC8
+    } else {
+        // Normaali asento
+        ssd1306_write(p, SET_SEG_REMAP);          // 0xA0
+        ssd1306_write(p, SET_COM_OUT_DIR);        // 0xC0
+    }
+
 }
