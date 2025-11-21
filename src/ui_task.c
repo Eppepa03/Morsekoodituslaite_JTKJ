@@ -41,6 +41,8 @@ void ui_task(void *params) {
     printf("SSD1306 init(retry): %d\n", ok);
     if (!ok) { printf("OLED init fail @0x3C I2C0\n"); vTaskDelete(NULL); }
 
+    ssd1306_rotate(&disp, true);
+
     ssd1306_poweroff(&disp);
     vTaskDelay(pdMS_TO_TICKS(5));
     ssd1306_poweron(&disp);
