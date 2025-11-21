@@ -8,9 +8,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # == EDIT at the beginning. Define the Project name and name for the main target (app).=========
 # Define project name
-set(APP_NAME JTKJ_app) 
+set(APP_NAME JTKJ_project) 
 # Define main app (app in this folder)
-set(MAIN_TARGET hat_app)
+set(MAIN_TARGET morsemaster9000)
 #===============================================================================================
 
 # Initialise pico_sdk from installed location
