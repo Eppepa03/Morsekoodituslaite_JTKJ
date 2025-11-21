@@ -4,6 +4,9 @@
 #include "tkjhat/ssd1306.h"
 #include "ui_menu.h"
 #include "icons.h"
+// Lisätty nämä delaytä varten
+#include "FreeRTOS.h"
+#include "task.h"
 
 #define FONT_W 8
 #define FONT_H 8
@@ -17,11 +20,12 @@ static const int main_count = 3;
 static const char* connect_items[] = {"USB", "Wireless"};
 static const int connect_count = 2;
 
-// Setup-valikko (UUSI)
-static const char* setup_items[] = {"Screen Orient", "Back"};
-static const int setup_count = 2;
+// Setup-valikko
+// "Back" poistettu, teksti pidennetty.
+static const char* setup_items[] = {"Screen Orientation"}; 
+static const int setup_count = 1;
 
-// Orientation-valikko (UUSI)
+// Orientation-valikko
 static const char* orient_items[] = {"Normal", "Flipped"};
 static const int orient_count = 2;
 
@@ -37,8 +41,8 @@ static const int confirm_count = 2;
 static volatile ui_state_t g_state = UI_STATE_MAIN_MENU;
 static volatile int sel_main = 0;
 static volatile int sel_connect = 0;
-static volatile int sel_setup = 0;  // UUSI
-static volatile int sel_orient = 0; // UUSI
+static volatile int sel_setup = 0;
+static volatile int sel_orient = 0;
 static volatile int sel_usb = 0;
 static volatile int sel_confirm = 1;
 static bool need_redraw = true;
@@ -84,7 +88,6 @@ static inline void ssd1306_draw_bitmap_1bpp(ssd1306_t *d,int x,int y,int w,int h
 }
 
 static void draw_menu_icon(ssd1306_t* d, int x, int y, int idx) {
-    // Setup-ikoni lisätty (indeksi 1)
     const uint8_t* bmp = (idx == 0) ? ICON_CONNECT : (idx == 1) ? ICON_SETUP : ICON_POWER;
     ssd1306_draw_bitmap_1bpp(d, x, y, ICON_W, ICON_H, bmp);
 }
@@ -123,15 +126,16 @@ static void draw_ui(ssd1306_t *disp){
             if (i == sel_connect) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
         }
 
-    } else if (g_state == UI_STATE_SETUP_MENU) { // UUSI
+    } else if (g_state == UI_STATE_SETUP_MENU) {
         draw_header(disp, "Setup");
         for (int i = 0; i < setup_count; i++) {
             int y = 16 + i * LINE_H;
-            ssd1306_draw_string(disp, 10, y + 4, 1, setup_items[i]);
+            // PIIRRETÄÄN X=2 ETTÄ PITKÄ TEKSTI MAHTUU
+            ssd1306_draw_string(disp, 2, y + 4, 1, setup_items[i]);
             if (i == sel_setup) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
         }
 
-    } else if (g_state == UI_STATE_ORIENT_MENU) { // UUSI
+    } else if (g_state == UI_STATE_ORIENT_MENU) {
         draw_header(disp, "Orientation");
         for (int i = 0; i < orient_count; i++) {
             int y = 16 + i * LINE_H;
@@ -165,9 +169,7 @@ static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state
     
     int len = text_chars(msg);
     int scale = 2;
-    if (text_pixel_width_chars(len, scale) > UI_OLED_W) {
-        scale = 1;
-    }
+    if (text_pixel_width_chars(len, scale) > UI_OLED_W) scale = 1;
 
     int w = text_pixel_width_chars(len, scale);
     int x = (UI_OLED_W - w) / 2; if (x < 0) x = 0;
@@ -176,25 +178,13 @@ static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state
     ssd1306_draw_string(disp, (uint32_t)x, (uint32_t)y, scale, msg);
     ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H);
     ssd1306_show(disp);
-    
-    // Huom: varsinaista delaytä ei suositella täällä,
-    // mutta visuaalinen palaute jää näkyviin kunnes seuraava redraw tulee.
 }
 
 static void perform_shutdown(ssd1306_t *disp){
     ssd1306_clear(disp);
-    const char* msg = "Shutting down...";
-    int len = text_chars(msg);
-    int scale = (text_pixel_width_chars(len, 2) > UI_OLED_W) ? 1 : 2;
-
-    int w = text_pixel_width_chars(len, scale);
-    int x = (UI_OLED_W - w) / 2; if (x < 0) x = 0;
-    int y = (UI_OLED_H - FONT_H * scale) / 2;
-
-    ssd1306_draw_string(disp, (uint32_t)x, (uint32_t)y, scale, msg);
+    ssd1306_draw_string(disp, 10, 28, 1, "Shutting down...");
     ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H);
     ssd1306_show(disp);
-    
     if (g_cbs.on_shutdown) g_cbs.on_shutdown();
 }
 
@@ -230,39 +220,33 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         if (cmd == UI_CMD_SCROLL) sel_main = (sel_main + 1) % main_count;
         if (cmd == UI_CMD_SELECT) {
             if (sel_main == 0) { g_state = UI_STATE_CONNECT_MENU; sel_connect = 0; }
-            else if (sel_main == 1) { g_state = UI_STATE_SETUP_MENU; sel_setup = 0; } // UUSI: Setup
+            else if (sel_main == 1) { g_state = UI_STATE_SETUP_MENU; sel_setup = 0; }
             else if (sel_main == 2) { g_state = UI_STATE_CONFIRM_SHUTDOWN; sel_confirm = 1; }
         }
 
     } else if (g_state == UI_STATE_CONNECT_MENU) {
         if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU;
         else if (cmd == UI_CMD_SCROLL) sel_connect = (sel_connect + 1) % connect_count;
-
         if (cmd == UI_CMD_SELECT) {
-            if (sel_connect == 0) { 
-                g_state = UI_STATE_USB_MENU; 
-                sel_usb = 0; 
-            }
+            if (sel_connect == 0) { g_state = UI_STATE_USB_MENU; sel_usb = 0; }
             else { 
                 if (g_cbs.on_connect_wireless) g_cbs.on_connect_wireless(); 
                 show_selection_and_return(g_disp, "Coming soon!", UI_STATE_MAIN_MENU); 
             }
         }
     
-    } else if (g_state == UI_STATE_SETUP_MENU) { // UUSI: Setup logiikka
-        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU;
+    } else if (g_state == UI_STATE_SETUP_MENU) { 
+        // --- Back poistettu, logiikka yksinkertaistettu ---
+        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU; // Ainoa tapa poistua
         else if (cmd == UI_CMD_SCROLL) sel_setup = (sel_setup + 1) % setup_count;
         
         if (cmd == UI_CMD_SELECT) {
-            if (sel_setup == 0) { // Screen Orientation
-                g_state = UI_STATE_ORIENT_MENU;
-                sel_orient = 0;
-            } else { // Back
-                g_state = UI_STATE_MAIN_MENU;
-            }
+            // Ainoa vaihtoehto on Screen Orientation
+            g_state = UI_STATE_ORIENT_MENU;
+            sel_orient = 0;
         }
 
-    } else if (g_state == UI_STATE_ORIENT_MENU) { // UUSI: Orientation logiikka
+    } else if (g_state == UI_STATE_ORIENT_MENU) {
         if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_SETUP_MENU;
         else if (cmd == UI_CMD_SCROLL) sel_orient = (sel_orient + 1) % orient_count;
         
@@ -274,16 +258,17 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
                 if (g_cbs.on_orient_flipped) g_cbs.on_orient_flipped();
                 show_selection_and_return(g_disp, "Set: Flipped", UI_STATE_SETUP_MENU);
             }
-            // Pieni viive, jotta käyttäjä ehtii nähdä vahvistuksen
+            
             vTaskDelay(pdMS_TO_TICKS(500));
-            g_state = UI_STATE_SETUP_MENU; // Palataan Setuppiin
-            need_redraw = true;
+            g_state = UI_STATE_SETUP_MENU;
+            // PAKOTA UUDELLEENPIIRTO HETI
+            need_redraw = true; 
+            draw_ui(g_disp); 
         }
 
     } else if (g_state == UI_STATE_USB_MENU) {
         if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_CONNECT_MENU;
         else if (cmd == UI_CMD_SCROLL) sel_usb = (sel_usb + 1) % usb_count;
-
         if (cmd == UI_CMD_SELECT) {
             if (sel_usb == 0) {
                 if (g_cbs.on_usb_send) g_cbs.on_usb_send();
