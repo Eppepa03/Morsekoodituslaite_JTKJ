@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # == EDIT at the beginning. Define the Project name and name for the main target (app).=========
 # Define project name
-set(APP_NAME JTKJ_project) 
+set(APP_NAME Morsemaster) 
 # Define main app (app in this folder)
 set(MAIN_TARGET morsemaster9000)
 #===============================================================================================

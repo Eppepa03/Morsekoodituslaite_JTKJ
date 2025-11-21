@@ -8,7 +8,12 @@
 #include "state_machine.h"
 #include <stdio.h>
 
-extern QueueHandle_t uiQ; // UUSI
+// Haetaan ulkopuoliset jonot ja tila
+extern QueueHandle_t morseQ;
+extern QueueHandle_t stateQ;
+extern QueueHandle_t uiQ;
+extern volatile State_t currentState;
+
 static ssd1306_t disp;
 
 // UUDET CALLBACKIT
@@ -26,6 +31,7 @@ static void on_shutdown(void) { printf("Shutdown valittu\n"); }
 
 void ui_task(void *params) {
     (void)params;
+
 
     bool ok = false;
     for (int i = 0; i < 3 && !ok; ++i) {

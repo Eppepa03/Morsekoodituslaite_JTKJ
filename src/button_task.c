@@ -16,6 +16,7 @@
 
 // Haetaan ulkopuoliset jonot ja tila
 extern QueueHandle_t morseQ;
+extern QueueHandle_t stateQ;
 extern QueueHandle_t uiQ;
 extern volatile State_t currentState;
 
@@ -58,7 +59,7 @@ static bool is_pressed(unsigned int pin) {
 }
 
 // 2. Lähettää Morse-jonoon
-static inline void morse_send_character_gap(void) {
+static void morse_send_character_gap(void) {
     symbol_ev_t ev = GAP_CHAR;
     xQueueSend(morseQ, &ev, 0);
 }
@@ -66,7 +67,7 @@ static void morse_send_word_gap(void) {
     symbol_ev_t ev = GAP_WORD;
     xQueueSend(morseQ, &ev, 0);
 }
-static inline void morse_send_end_msg(void) {
+static void morse_send_end_msg(void) {
     symbol_ev_t ev = END_MSG;
     xQueueSend(morseQ, &ev, 0);
 }

@@ -22,31 +22,6 @@ QueueHandle_t morseQ;
 QueueHandle_t stateQ;
 QueueHandle_t uiQ;
 
-// static void testTask(void *arg) {
-//     char buf[BUFFER_SIZE];
-
-//     while (!tud_mounted() || !tud_cdc_n_connected(1)) {
-//         vTaskDelay(pdMS_TO_TICKS(50));
-//     }
-
-//     while (current_state = STATE_USB_CONNECTED) {
-//         char test[] = "--.";
-        
-//         int i;
-//         char test_char;
-//         for (i=0; i < strlen(test); i++) {
-//             test_char = test[i];
-//             if (tud_cdc_n_connected(CDC_ITF_TX)) {
-//             // Sends data using tud_cdc_write
-//             snprintf(buf, BUFFER_SIZE, "%c", test_char);
-//             tud_cdc_n_write(CDC_ITF_TX, buf, strlen(buf));
-//             tud_cdc_n_write_flush(CDC_ITF_TX);
-//             }
-//             vTaskDelay(pdMS_TO_TICKS(500));
-//         }
-//         vTaskDelay(pdMS_TO_TICKS(1000));
-//     }
-// }
 
 int main(void) {
     stdio_init_all();

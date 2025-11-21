@@ -5,8 +5,13 @@
 #include "tusb.h"
 #include "queue.h"
 #include "event.h"
+#include "state_machine.h"
 
+// Haetaan ulkopuoliset jonot ja tila
 extern QueueHandle_t morseQ;
+extern QueueHandle_t stateQ;
+extern QueueHandle_t uiQ;
+extern volatile State_t currentState;
 
 void usbTask(void *args) {
     char morseChar;
