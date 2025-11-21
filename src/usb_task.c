@@ -11,10 +11,9 @@
 extern QueueHandle_t morseQ;
 extern QueueHandle_t stateQ;
 extern QueueHandle_t uiQ;
-extern volatile State_t currentState;
 
 void usbTask(void *args) {
-    char morseChar;
+    symbol_ev_t morseChar;
     for (;;) {
         tud_task(); // Käytetään TinyUSB:tä. Tämän pitää kutsua tehtävän alussa, jotta USB stack pysyy pystyssä.
         

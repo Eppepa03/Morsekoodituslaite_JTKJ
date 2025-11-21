@@ -9,29 +9,35 @@ extern QueueHandle_t morseQ;
 extern QueueHandle_t stateQ;
 extern QueueHandle_t uiQ;
 
-volatile State_t currentState = STATE_IDLE;
+State_t currentState = STATE_IDLE;
 
 void changeState(State_t newState) {
     currentState = newState;
 }
 
 void stateMachineTask(void *pvParameters) {
-    
-    // for (;;) {
-    //     switch (currentState) {
-    //         case STATE_IDLE:
-    //             // Idle logic
-    //             break;
-    //         case STATE_MENU:
-    //             // Mode selection logic
-    //             break;
-    //         case STATE_USB_CONNECTED:
-    //             // USB logic
-    //             break;
-    //         case STATE_WIFI_CONNECTED:
-    //             // Wi-Fi logic
-    //             break;
-    //     }
-    //     vTaskDelay(pdMS_TO_TICKS(50));
-    // }
+    State_t nextState;
+
+    for (;;) {
+        if (xQueueReceive(stateQ, &nextState, portMAX_DELAY)) {
+            switch (nextState) {
+                case STATE_IDLE:
+                    // Idle logic
+                    changeState(STATE_IDLE);
+                    break;
+                case STATE_MENU:
+                    // Mode selection logic
+                    changeState(STATE_MENU);
+                    break;
+                case STATE_USB_CONNECTED:
+                    // USB logic
+                    changeState(STATE_USB_CONNECTED);
+                    break;
+                case STATE_WIFI_CONNECTED:
+                    // Wi-Fi logic
+                    changeState(STATE_WIFI_CONNECTED);
+                    break;
+            }
+        }
+    }
 }

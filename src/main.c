@@ -16,8 +16,6 @@
 #define CDC_ITF_TX 1
 #define BUFFER_SIZE 1024
 
-extern State_t current_state;
-
 QueueHandle_t morseQ;
 QueueHandle_t stateQ;
 QueueHandle_t uiQ;

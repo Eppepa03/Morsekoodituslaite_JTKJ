@@ -18,17 +18,6 @@
 extern QueueHandle_t morseQ;
 extern QueueHandle_t stateQ;
 extern QueueHandle_t uiQ;
-extern volatile State_t currentState;
-
-// ---- Asetukset ----
-#define SCAN_MS       10      
-#define DEBOUNCE_MS   40      
-#define DOUBLE_MS     350     
-#define DASH_THRES_MS 200     
-
-#define SCAN_TICKS    (pdMS_TO_TICKS(SCAN_MS))
-#define DEBOUNCE_TKS  (pdMS_TO_TICKS(DEBOUNCE_MS))
-#define DOUBLE_TKS    (pdMS_TO_TICKS(DOUBLE_MS))
 
 // Määritellään pinnit käyttäen SDK:n vakioita.
 // Jos SDK ei jostain syystä määrittele niitä, käytetään varavaihtoehtoja.
@@ -47,6 +36,13 @@ extern volatile State_t currentState;
     #define SW2_PIN 8 // JTKJ-laudan yleinen Button 2 (tarkista jos ei toimi)
   #endif
 #endif
+
+// ---- Asetukset ----
+#define DEBOUNCE_MS   40      
+#define DOUBLE_MS     350         
+
+#define DEBOUNCE_TKS  (pdMS_TO_TICKS(DEBOUNCE_MS))
+#define DOUBLE_TKS    (pdMS_TO_TICKS(DOUBLE_MS))
 
 // ---------------------------------------------------------
 // APUFUNKTIOT (Nämä pitää olla ENNEN buttonTask-funktiota)
@@ -204,6 +200,6 @@ void buttonTask(void *pvParameters)
             }
         }
 
-        vTaskDelay(SCAN_TICKS);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }

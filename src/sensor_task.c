@@ -11,7 +11,6 @@
 // Haetaan ulkopuoliset jonot morseaakkosille ja tilalle
 extern QueueHandle_t morseQ;
 extern QueueHandle_t stateQ;
-extern volatile State_t currentState;
 
 // Tune these after testing
 #define SAMPLE_PERIOD_MS     10      // 100 Hz

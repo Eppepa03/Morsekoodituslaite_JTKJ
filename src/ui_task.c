@@ -12,7 +12,6 @@
 extern QueueHandle_t morseQ;
 extern QueueHandle_t stateQ;
 extern QueueHandle_t uiQ;
-extern volatile State_t currentState;
 
 static ssd1306_t disp;
 
@@ -41,7 +40,7 @@ void ui_task(void *params) {
     printf("SSD1306 init(retry): %d\n", ok);
     if (!ok) { printf("OLED init fail @0x3C I2C0\n"); vTaskDelete(NULL); }
 
-    ssd1306_rotate(&disp, true);
+    ssd1306_rotate(&disp, false);
 
     ssd1306_poweroff(&disp);
     vTaskDelay(pdMS_TO_TICKS(5));
