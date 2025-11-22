@@ -6,4 +6,4 @@ void sensorTask(void *pvParameters);
 typedef enum {
     SENSOR_STATE_IDLE = 0,
     SENSOR_STATE_IN_BURST
-} sensor_state_t;
+} sensor_state;

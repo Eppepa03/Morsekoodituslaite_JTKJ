@@ -266,11 +266,12 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_CONNECT_MENU;
         else if (cmd == UI_CMD_SCROLL) sel_usb = (sel_usb + 1) % usb_count;
         if (cmd == UI_CMD_SELECT) {
+            if (g_cbs.on_connect_usb) g_cbs.on_connect_usb();
             if (sel_usb == 0) {
-                if (g_cbs.on_usb_send) g_cbs.on_usb_send();
+                // if (g_cbs.on_usb_send) g_cbs.on_usb_send();
                 show_selection_and_return(g_disp, "Sending...", UI_STATE_MAIN_MENU);
             } else {
-                if (g_cbs.on_usb_receive) g_cbs.on_usb_receive();
+                // if (g_cbs.on_usb_receive) g_cbs.on_usb_receive();
                 show_selection_and_return(g_disp, "Receiving...", UI_STATE_MAIN_MENU);
             }
         }

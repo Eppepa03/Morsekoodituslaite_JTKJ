@@ -16,8 +16,9 @@
 #define CDC_ITF_TX 1
 #define BUFFER_SIZE 1024
 
-QueueHandle_t morseQ;
 QueueHandle_t stateQ;
+QueueHandle_t busStateQ;
+QueueHandle_t morseQ;
 QueueHandle_t uiQ;
 
 
@@ -28,13 +29,23 @@ int main(void) {
     init_hat_sdk();
     init_i2c_default();
 
+    // Initializions for the IMU
+    int rc = init_ICM42670();
+    if (rc != 0) { while (1) { printf("[SENSOR] IMU init FAIL\r\n"); sleep_ms(1000); } }
+
+    rc = ICM42670_start_with_default_values();
+    if (rc != 0) { while (1) { printf("[SENSOR] IMU start FAIL\r\n"); sleep_ms(1000); } }
+
+    // Jonot tilakomennoille
+    stateQ = xQueueCreate(64, sizeof(main_state));
+    configASSERT(stateQ != NULL);
+
+    busStateQ = xQueueCreate(64, sizeof(bus_state));
+    configASSERT(stateQ != NULL);
+
     // Jono morsemerkeille
     morseQ = xQueueCreate(64, sizeof(symbol_ev_t));
     configASSERT(morseQ != NULL);
-
-    // Jono tilakomennoille
-    stateQ = xQueueCreate(64, sizeof(State_t));
-    configASSERT(stateQ != NULL);
 
     // Jono UI-komennoille
     uiQ = xQueueCreate(10, sizeof(ui_cmd_t));

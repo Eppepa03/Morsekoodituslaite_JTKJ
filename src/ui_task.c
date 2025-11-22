@@ -9,24 +9,25 @@
 #include <stdio.h>
 
 // Haetaan ulkopuoliset jonot ja tila
-extern QueueHandle_t morseQ;
 extern QueueHandle_t stateQ;
+extern QueueHandle_t busStateQ;
+extern QueueHandle_t morseQ;
 extern QueueHandle_t uiQ;
 
 static ssd1306_t disp;
 
 // UUDET CALLBACKIT
-static void on_usb_send(void) { 
-    printf("USB Send valittu\n"); 
-    State_t nextState = STATE_USB_CONNECTED;
-    xQueueSend(stateQ, &nextState, 0); 
-}
-static void on_usb_receive(void) { 
-    printf("USB Receive valittu\n"); 
-    State_t nextState = STATE_USB_CONNECTED;
-    xQueueSend(stateQ, &nextState, 0);  
-}
-
+// static void on_usb_send(void) { 
+//     printf("USB Send valittu\n"); 
+//     main_state nextState = STATE_USB_CONNECTED;
+//     xQueueSend(stateQ, &nextState, 0); 
+// }
+// static void on_usb_receive(void) { 
+//     printf("USB Receive valittu\n"); 
+//     main_state nextState = STATE_USB_CONNECTED;
+//     xQueueSend(stateQ, &nextState, 0);  
+// }
+static void on_usb(void) { printf("USB valittu\n"); }
 static void on_wireless(void) { printf("Wireless valittu\n"); }
 static void on_shutdown(void) { printf("Shutdown valittu\n"); }
 
@@ -65,8 +66,9 @@ void ui_task(void *params) {
 
     // UI käyntiin
     ui_menu_callbacks_t callbacks = {
-        .on_usb_send = on_usb_send,       
-        .on_usb_receive = on_usb_receive, 
+        // .on_usb_send = on_usb_send,       
+        // .on_usb_receive = on_usb_receive,
+        .on_connect_usb = on_usb, 
         .on_connect_wireless = on_wireless,
         .on_shutdown = on_shutdown,
         

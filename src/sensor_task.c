@@ -21,6 +21,7 @@
 // External queues
 extern QueueHandle_t morseQ;
 extern QueueHandle_t stateQ;
+extern QueueHandle_t busStateQ;
 
 // Tunable thresholds
 #define SAMPLE_PERIOD_MS     10      // Sampling rate 100 Hz
@@ -31,20 +32,13 @@ extern QueueHandle_t stateQ;
 #define AXIS_MAG_THRESH      30.0f   // The average Z angular velocity over the burst must exceed this threshold to be counted as a flick
 
 // Starts in idle state (waiting for a big enough motion to start a flick)
-sensor_state_t sensorState = SENSOR_STATE_IDLE;
+sensor_state sensorState = SENSOR_STATE_IDLE;
 
 
 // Main task
 void sensorTask(void *pvParameters)
 {
     printf("[SENSOR] start\r\n");
-
-    // Initializions for the IMU
-    int rc = init_ICM42670();
-    if (rc != 0) { while (1) { printf("[SENSOR] IMU init FAIL\r\n"); vTaskDelay(1000); } }
-
-    rc = ICM42670_start_with_default_values();
-    if (rc != 0) { while (1) { printf("[SENSOR] IMU start FAIL\r\n"); vTaskDelay(1000); } }
     
     // sum of gz values, samples and samples below the end threshold
     float sum_gz = 0.0f;
@@ -53,74 +47,79 @@ void sensorTask(void *pvParameters)
 
     while (1)
     {
-        // Reads rensor values if the device is in STATE_USB_CONNECTED
-        float ax, ay, az, gx, gy, gz, t;
         if (currentState == STATE_USB_CONNECTED) {
-            printf("Connected");
-            ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-        }
-
-        // Total gyro magnitude in degrees/s
-        float gmag = sqrtf(gx*gx + gy*gy + gz*gz);
-
-        switch (sensorState)
-        {
-        case SENSOR_STATE_IDLE:
-
-            // Wait for a big enough motion to start a flick and enter burst state
-            if (gmag > GYRO_START_THRESH) {
-                sensorState = SENSOR_STATE_IN_BURST;
-                sum_gz = gz;
-                burst_samples = 1;
-                below_end_count = 0;
+            float ax, ay, az, gx, gy, gz, t;
+            if (currentBusState == BUS_READ_SENSOR) {
+                ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
+            } else {
+                ax = ay = az = gx = gy = gz = t = 0;
             }
-            break;
 
+            // Total gyro magnitude in degrees/s
+            float gmag = sqrtf(gx*gx + gy*gy + gz*gz);
 
-        case SENSOR_STATE_IN_BURST:
-
-            // Collects z-axis movement while we are in a burst
-            sum_gz += gz;
-            burst_samples++;
-
-             // Check if motion has dropped below end-threshold
-            if (gmag < GYRO_END_THRESH)
-                below_end_count++;
-            else
-                below_end_count = 0;
-
-            // Conditions to end the burst:
-            //  - motion has been low for a few samples, OR
-            //  - the burst has grown too long. 
-            if (below_end_count >= 3 || burst_samples >= MAX_BURST_SAMPLES)
+            switch (sensorState)
             {
-                // Computes average gz over the burst.
-                float avg_gz = sum_gz / burst_samples;
+            case SENSOR_STATE_IDLE:
 
-                // Only treat as a valid flick if:
-                //  - it lasted long enough (burst_samples)
-                //  - the average Z motion was big enough
-                if (burst_samples >= MIN_BURST_SAMPLES &&
-                    fabsf(avg_gz) > AXIS_MAG_THRESH)
+                // Wait for a big enough motion to start a flick and enter burst state
+                if (gmag > GYRO_START_THRESH) {
+                    sensorState = SENSOR_STATE_IN_BURST;
+                    sum_gz = gz;
+                    burst_samples = 1;
+                    below_end_count = 0;
+                }
+                break;
+
+
+            case SENSOR_STATE_IN_BURST:
+
+                // Collects z-axis movement while we are in a burst
+                sum_gz += gz;
+                burst_samples++;
+
+                // Check if motion has dropped below end-threshold
+                if (gmag < GYRO_END_THRESH)
+                    below_end_count++;
+                else
+                    below_end_count = 0;
+
+                // Conditions to end the burst:
+                //  - motion has been low for a few samples, OR
+                //  - the burst has grown too long. 
+                if (below_end_count >= 3 || burst_samples >= MAX_BURST_SAMPLES)
                 {
-                    // Decide if this was a dot or dash
-                    // Sign convention:
-                    //  - avg_gz > 0  → DASH
-                    //  - avg_gz < 0  → DOT
-                    symbol_ev_t ev = (avg_gz > 0.0f) ? DASH : DOT;
-                    xQueueSend(morseQ, &ev, portMAX_DELAY);
+                    // Computes average gz over the burst.
+                    float avg_gz = sum_gz / burst_samples;
+
+                    // Only treat as a valid flick if:
+                    //  - it lasted long enough (burst_samples)
+                    //  - the average Z motion was big enough
+                    if (burst_samples >= MIN_BURST_SAMPLES &&
+                        fabsf(avg_gz) > AXIS_MAG_THRESH)
+                    {
+                        // Decide if this was a dot or dash
+                        // Sign convention:
+                        //  - avg_gz > 0  → DASH
+                        //  - avg_gz < 0  → DOT
+                        symbol_ev_t ev = (avg_gz > 0.0f) ? DASH : DOT;
+                        xQueueSend(morseQ, &ev, portMAX_DELAY);
+                    }
+
+                    // Resets for the next flick and returns to idle state
+                    sensorState = SENSOR_STATE_IDLE;
+                    sum_gz = 0.0f;
+                    burst_samples = 0;
+                    below_end_count = 0;
                 }
 
-                // Resets for the next flick and returns to idle state
-                sensorState = SENSOR_STATE_IDLE;
-                sum_gz = 0.0f;
-                burst_samples = 0;
-                below_end_count = 0;
+                break;
             }
 
-            break;
+            vTaskDelay(pdMS_TO_TICKS(SAMPLE_PERIOD_MS));
+        } else {
+            // Don't read sensor
+            vTaskDelay(pdMS_TO_TICKS(100));
         }
-
-        vTaskDelay(pdMS_TO_TICKS(SAMPLE_PERIOD_MS));
     }
 }

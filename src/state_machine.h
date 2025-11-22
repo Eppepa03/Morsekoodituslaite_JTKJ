@@ -3,10 +3,18 @@ typedef enum {
     STATE_IDLE,
     STATE_MENU,
     STATE_USB_CONNECTED,
-    STATE_WIFI_CONNECTED
-} State_t;
+    STATE_WIFI_CONNECTED,
+} main_state;
 
-extern State_t currentState;
+typedef enum {
+    BUS_IDLE,
+    BUS_UI_UPDATE,
+    BUS_READ_SENSOR
+} bus_state;
+
+extern main_state currentState;
+extern bus_state currentBusState;
 
 void stateMachineTask(void *pvParameters);
-void changeState(State_t newState);
+void changeState(main_state newState);
+void changeBusState(bus_state newState);

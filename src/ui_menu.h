@@ -27,8 +27,9 @@ typedef enum {
 
 typedef struct {
     void (*on_connect_wireless)(void);
-    void (*on_usb_send)(void);
-    void (*on_usb_receive)(void);
+    // void (*on_usb_send)(void);
+    // void (*on_usb_receive)(void);
+    void (*on_connect_usb) (void);
     
     // UUDET CALLBACKIT
     void (*on_orient_normal)(void);
