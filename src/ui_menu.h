@@ -17,7 +17,8 @@ extern "C" {
 #endif
 
 typedef enum {
-    UI_STATE_MAIN_MENU = 0,
+    UI_STATE_IDLE,
+    UI_STATE_MAIN_MENU,
     UI_STATE_CONNECT_MENU,
     UI_STATE_SETUP_MENU,        // UUSI: Setup-päävalikko
     UI_STATE_ORIENT_MENU,       // UUSI: Orientation-alavalikko
@@ -26,17 +27,20 @@ typedef enum {
 } ui_state_t;
 
 typedef struct {
+    void (*on_wake_up) (void);
     void (*on_connect_wireless)(void);
     void (*on_usb_send)(void);
     void (*on_usb_receive)(void);
     void (*on_connect_usb) (void);
+    void (*on_return) (void);
     void (*on_orient_normal)(void);
     void (*on_orient_flipped)(void);
     
     void (*on_shutdown)(void);
 } ui_menu_callbacks_t;
 
-void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs);
+void ui_menu_init(const ui_menu_callbacks_t* cbs);
+void ui_wakeup(ssd1306_t* disp);
 void ui_menu_process_cmd(ui_cmd_t cmd);
 void ui_menu_force_redraw(void);
 

@@ -11,7 +11,7 @@ extern QueueHandle_t morseQ;
 extern QueueHandle_t uiQ;
 
 main_state currentState = STATE_IDLE;
-bus_state currentBusState = BUS_IDLE;
+bus_state currentBusState = BUS_UI_UPDATE; // Aloitetaan tervetulotekstillä
 
 void changeState(main_state newState) {
     currentState = newState;

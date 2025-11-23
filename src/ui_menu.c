@@ -6,6 +6,7 @@
 #include "icons.h"
 #include "FreeRTOS.h"
 #include "tkjhat/sdk.h"
+#include "state_machine.h"
 
 #define FONT_W 8
 #define FONT_H 8
@@ -202,22 +203,23 @@ static void perform_shutdown(ssd1306_t *disp){
 }
 
 // ---------- Julkiset ----------
-void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs){
-    g_disp = disp;
+void ui_menu_init(const ui_menu_callbacks_t* cbs){
     if (cbs) { 
         g_cbs = *cbs; 
     }
 
-    g_state = UI_STATE_MAIN_MENU;
+    g_state = UI_STATE_IDLE;
+}
+
+void ui_wakeup(ssd1306_t* disp) {
+    draw_ui(disp);
     sel_main = 0; 
     sel_connect = 0; 
     sel_setup = 0; 
     sel_orient = 0;
     sel_usb = 0; 
-    sel_confirm = 1; 
+    sel_confirm = 1;
     need_redraw = true;
-    
-    draw_ui(g_disp);
 }
 
 void ui_menu_process_cmd(ui_cmd_t cmd){
@@ -233,7 +235,15 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
     int connect_before = sel_connect;
     int usb_before = sel_usb;
 
-    if (g_state == UI_STATE_MAIN_MENU) {
+    if (g_state == UI_STATE_IDLE) {
+        if (cmd = UI_CMD_SELECT) {
+            // Wake up
+            if (g_cbs.on_wake_up) {
+                g_cbs.on_wake_up();
+            }
+        }
+        
+    } else if (g_state == UI_STATE_MAIN_MENU) {
         if (cmd == UI_CMD_SCROLL) { 
             sel_main = (sel_main + 1) % main_count; 
         } else if (cmd == UI_CMD_SELECT) {
@@ -250,6 +260,13 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         }
 
     } else if (g_state == UI_STATE_CONNECT_MENU) {
+        // Palatessa USB tai WIFI valikoista, varmistetaan, että väylä siirtyy UI-tilaan
+        if (currentBusState != BUS_UI_UPDATE) {
+            if (g_cbs.on_return) {
+                g_cbs.on_return();
+            }
+        }
+
         if (cmd == UI_CMD_SCROLL_BACK) { 
             g_state = UI_STATE_MAIN_MENU; 
         } else if (cmd == UI_CMD_SCROLL) { 
@@ -259,6 +276,7 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
                 g_state = UI_STATE_USB_MENU; 
                 sel_usb = 0; 
             } else { 
+                // Tämän voisi vielä muokata omakseen, kuten UI_STATE_USB_MENU
                 if (g_cbs.on_connect_wireless) { 
                     g_cbs.on_connect_wireless(); 
                 }
@@ -296,29 +314,40 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         }
 
     } else if (g_state == UI_STATE_USB_MENU) {
+        if (g_cbs.on_connect_usb) { 
+            g_cbs.on_connect_usb(); // Change main state to STATE_USB_CONNECTED
+        }
+
         if (cmd == UI_CMD_SCROLL_BACK) { 
             g_state = UI_STATE_CONNECT_MENU; 
         } else if (cmd == UI_CMD_SCROLL) { 
             sel_usb = (sel_usb + 1) % usb_count; 
         } else if (cmd == UI_CMD_SELECT) {
-            if (g_cbs.on_connect_usb) { 
-                g_cbs.on_connect_usb(); 
-            }
             if (sel_usb == 0) {
                 show_selection(g_disp, "Sending...");
-                if (g_cbs.on_usb_send) g_cbs.on_usb_send();
+                if (g_cbs.on_usb_send) { 
+                    g_cbs.on_usb_send(); // Change bus state to BUS_READ_SENSOR
+                }
             } else {
                 show_selection(g_disp, "Receiving...");
-                if (g_cbs.on_usb_receive) g_cbs.on_usb_receive();
+                if (g_cbs.on_usb_receive) { 
+                    g_cbs.on_usb_receive(); // Change bus state to BUS_READ_SENSOR
+                }
             }
         }
 
     } else if (g_state == UI_STATE_CONFIRM_SHUTDOWN) {
-        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU;
-        else if (cmd == UI_CMD_SCROLL) sel_confirm = (sel_confirm + 1) % confirm_count;
-        if (cmd == UI_CMD_SELECT) {
-            if (sel_confirm == 0) perform_shutdown(g_disp);
-            else g_state = UI_STATE_MAIN_MENU;
+        if (cmd == UI_CMD_SCROLL_BACK) { 
+            g_state = UI_STATE_MAIN_MENU;
+        } else if (cmd == UI_CMD_SCROLL) { 
+            sel_confirm = (sel_confirm + 1) % confirm_count; 
+        } else if (cmd == UI_CMD_SELECT) {
+            if (sel_confirm == 0) { 
+                perform_shutdown(g_disp);
+                g_state = UI_STATE_IDLE;
+            } else { 
+                g_state = UI_STATE_MAIN_MENU; 
+            }
         }
     }
 

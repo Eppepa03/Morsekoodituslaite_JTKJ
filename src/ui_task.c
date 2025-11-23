@@ -17,22 +17,48 @@ extern QueueHandle_t uiQ;
 static ssd1306_t disp;
 
 // UUDET CALLBACKIT
+static void on_wake_up(void) {
+    // UI käyntiin
+    printf("UI herätetty\n"); 
+    bus_state nextBusState = BUS_UI_UPDATE;
+    xQueueSend(busStateQ, &nextBusState, 0);
+    main_state nextState = STATE_MENU;
+    xQueueSend(stateQ, &nextState, 0);
+    ui_wakeup(&disp);
+}
 static void on_usb_send(void) { 
     printf("USB Send valittu\n"); 
     bus_state nextBusState = BUS_READ_SENSOR;
+    xQueueSend(busStateQ, &nextBusState, 0);
 }
 static void on_usb_receive(void) { 
     printf("USB Receive valittu\n");
+    bus_state nextBusState = BUS_READ_SENSOR;
+    xQueueSend(busStateQ, &nextBusState, 0);
 }
 static void on_usb(void) { 
     printf("USB valittu\n"); 
     main_state nextState = STATE_USB_CONNECTED;
     xQueueSend(stateQ, &nextState, 0);  
 }
-static void on_wireless(void) { printf("Wireless valittu\n"); }
-static void on_shutdown(void) { printf("Shutdown valittu\n"); }
+static void on_wireless(void) { 
+    printf("Wireless valittu\n");
+    main_state nextState = STATE_WIFI_CONNECTED;
+    xQueueSend(stateQ, &nextState, 0); 
+}
+static void on_shutdown(void) { 
+    printf("Shutdown valittu\n");
+    bus_state nextBusState = BUS_IDLE;
+    xQueueSend(busStateQ, &nextBusState, 0);
+    main_state nextState = STATE_IDLE;
+    xQueueSend(stateQ, &nextState, 0);
+}
+static void on_return(void) { 
+    printf("Return valittu\n");
+    bus_state nextBusState = BUS_UI_UPDATE;
+    xQueueSend(busStateQ, &nextBusState, 0);
+}
 
-// --- KORJATUT KÄÄNTÖFUNKTIOT ---
 static void on_orient_normal(void) {
     printf("Screen: Normal\n");
     ssd1306_rotate(&disp, false); // 0 astetta
@@ -44,7 +70,33 @@ static void on_orient_flipped(void) {
     ssd1306_rotate(&disp, true);  // 180 astetta
     ssd1306_show(&disp);          // TÄRKEÄ: Lähetä komento näytölle heti
 }
-// ----------------------------
+
+ui_menu_callbacks_t callbacks = {
+    .on_wake_up = on_wake_up,
+    .on_usb_send = on_usb_send,       
+    .on_usb_receive = on_usb_receive,
+    .on_connect_usb = on_usb, 
+    .on_connect_wireless = on_wireless,
+    .on_shutdown = on_shutdown,
+    .on_return = on_return,
+    
+    .on_orient_normal = on_orient_normal,
+    .on_orient_flipped = on_orient_flipped
+};
+
+// APUFUNKTIOT
+static void say_hi_and_go_idle(void) {
+    // Splash
+    ssd1306_clear(&disp);
+    ssd1306_draw_string(&disp, 0, 0, 1, "    TERVETULOA!");
+    ssd1306_show(&disp);
+    vTaskDelay(pdMS_TO_TICKS(1500));
+    ssd1306_clear(&disp);
+    ssd1306_show(&disp);
+
+    bus_state nextBusState = BUS_IDLE;
+    xQueueSend(busStateQ, &nextBusState, 0);
+}
 
 void ui_task(void *params) {
     (void)params;
@@ -59,24 +111,9 @@ void ui_task(void *params) {
 
     ssd1306_rotate(&disp, false);
 
-    // Splash
-    ssd1306_clear(&disp);
-    ssd1306_draw_string(&disp, 0, 0, 1, "    TERVETULOA!");
-    ssd1306_show(&disp);
-    vTaskDelay(pdMS_TO_TICKS(1500)); 
+    say_hi_and_go_idle();
 
-    // UI käyntiin
-    ui_menu_callbacks_t callbacks = {
-        .on_usb_send = on_usb_send,       
-        .on_usb_receive = on_usb_receive,
-        .on_connect_usb = on_usb, 
-        .on_connect_wireless = on_wireless,
-        .on_shutdown = on_shutdown,
-        
-        .on_orient_normal = on_orient_normal,
-        .on_orient_flipped = on_orient_flipped
-    };
-    ui_menu_init(&disp, &callbacks);
+    ui_menu_init(&callbacks);
 
     ui_cmd_t cmd;
     while (1) {

@@ -130,7 +130,7 @@ void buttonTask(void *pvParameters)
                     uint32_t duration = (now - sw1_press_start) * portTICK_PERIOD_MS;
 
                     // PÄÄTÖS: OLLAANKO VALIKOSSA VAI MORSETETAANKO?
-                    if (currentState == STATE_IDLE || currentState == STATE_MENU) {
+                    if (currentBusState != BUS_READ_SENSOR) {
                         // --- UI-TILA ---
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
                             // Tuplaklikki -> BACK
@@ -141,7 +141,7 @@ void buttonTask(void *pvParameters)
                             sw1_pending_double = true;
                             sw1_release_time = now;
                         }
-                    } else if (currentState == STATE_USB_CONNECTED) {
+                    } else {
                         // --- MORSE-TILA ---
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
                             // Tuplaklikki -> Morse END_MSG
@@ -155,8 +155,6 @@ void buttonTask(void *pvParameters)
 
                             morse_send_character_gap();
                         }
-                    } else {
-                        printf("Unknown state");
                     }
                 }
             }
@@ -166,7 +164,7 @@ void buttonTask(void *pvParameters)
         if (sw1_pending_double && (now - sw1_release_time) > DOUBLE_TKS) {
             sw1_pending_double = false;
             
-            if (currentState == STATE_IDLE || currentState == STATE_MENU) {
+            if (currentBusState != BUS_READ_SENSOR) {
                 // Aika loppui -> Se oli yksi SCROLL
                 send_ui_cmd(UI_CMD_SCROLL);
             }
@@ -188,10 +186,10 @@ void buttonTask(void *pvParameters)
 
                 // Reagoidaan vasta kun nappi nousee ylös
                 if (!sw2_stable) {
-                    if (currentState == STATE_IDLE || currentState == STATE_MENU) {
+                    if (currentBusState != BUS_READ_SENSOR) {
                         // UI: Select
                         send_ui_cmd(UI_CMD_SELECT);
-                    } else if (currentState == STATE_USB_CONNECTED){
+                    } else {
                         // -> Morse GAP_WORD
                         morse_send_word_gap();
                     }
