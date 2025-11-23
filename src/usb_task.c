@@ -6,6 +6,8 @@
 #include "queue.h"
 #include "event.h"
 #include "state_machine.h"
+// Lisää TKJ-HAT SDK LED-funktioita varten
+#include "tkjhat/sdk.h" 
 
 // Haetaan ulkopuoliset jonot ja tila
 extern QueueHandle_t morseQ;
@@ -32,9 +34,7 @@ void tud_cdc_rx_cb(uint8_t interface) {
 
 void usbTask(void *args) {
     symbol_ev_t morseChar;
-    char result[32] = "";
     char message[8];
-
     for (;;) {
         tud_task(); // Käytetään TinyUSB:tä. Tämän pitää kutsua tehtävän alussa, jotta USB stack pysyy pystyssä.
         
@@ -45,23 +45,30 @@ void usbTask(void *args) {
             if (tud_cdc_connected() && currentState == STATE_USB_CONNECTED) {
 
                 switch (morseChar) {
-                    case DOT: strcpy(message, "."); printf("Recorded: %s\n", message); break;
-                    case DASH: strcpy(message, "-"); printf("Recorded: %s\n", message); break;
-                    case GAP_CHAR: strcpy(message, " "); printf("Recorded: Character gap\n"); break;
-                    case GAP_WORD: strcpy(message, "  "); printf("Recorded: Word gap\n"); break;
-                    case END_MSG: strcpy(message, "  \n"); printf("Recorded: End message\n"); break;
+                    case DOT: strcpy(message, "."); break;
+                    case DASH: strcpy(message, "-"); break;
+                    case GAP_CHAR: strcpy(message, " "); break;
+                    case GAP_WORD: strcpy(message, "  "); break;
+                    case END_MSG: strcpy(message, "\r\n"); break;
                 }
 
-                // Lisää message lopulliseen jonoon
-                strncat(result, message, sizeof(result) - strlen(result) - 1);
+                tud_cdc_write(&message, strlen(message));
+                tud_cdc_write_flush();
 
-                // Jos END_MSG, lähetä koko viesti ja tyhjennä puskuri
+                // Ledin vlikautus end_msg:in kohdalla
                 if (morseChar == END_MSG) {
-                    tud_cdc_write(result, strlen(result));
-                    tud_cdc_write_flush();
-                    result[0] = '\0';
+                    
+                    // Led päälle (true)
+                    set_red_led_status(true); 
+                    
+                    // Odotetaan lyhyt aika (50 ms)
+                    vTaskDelay(pdMS_TO_TICKS(50));
+                    
+                    // LED POIS PÄÄLTÄ (false)
+                    set_red_led_status(false); 
                 }
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }

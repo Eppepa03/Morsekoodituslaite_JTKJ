@@ -29,6 +29,7 @@ int main(void) {
 
     init_hat_sdk();
     init_i2c_default();
+    init_red_led();
 
     // Initializions for the IMU
     int rc = init_ICM42670();
