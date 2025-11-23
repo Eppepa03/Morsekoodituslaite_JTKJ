@@ -50,6 +50,22 @@ static bool need_redraw = true;
 static ssd1306_t* g_disp = NULL;
 static ui_menu_callbacks_t g_cbs = {0};
 
+// USB Receive Buffer
+static char rx_buffer[128] = ""; // Simple buffer for received text
+
+void ui_menu_add_rx_char(char c) {
+    size_t len = strlen(rx_buffer);
+    if (len < sizeof(rx_buffer) - 1) {
+        rx_buffer[len] = c;
+        rx_buffer[len + 1] = '\0';
+    } else {
+        // Buffer full, shift left (simple scrolling)
+        memmove(rx_buffer, rx_buffer + 1, len);
+        rx_buffer[len - 1] = c;
+    }
+    need_redraw = true;
+}
+
 // ---------- Invert-apurit ----------
 static void ssd1306_invert_rect(ssd1306_t *p, int x, int y, int w, int h){
     if (!p || !p->buffer) return;
@@ -170,6 +186,30 @@ static void draw_ui(ssd1306_t *disp){
             if (i == sel_confirm) { 
                 ssd1306_invert_rect(disp, 18, y - 2, 40, 12); 
             }
+        }
+    } else if (g_state == UI_STATE_USB_RECEIVING) {
+        draw_header(disp, "Receiving...");
+        // Draw the received text. 
+        // Simple implementation: draw as much as fits.
+        // For better multiline support, we'd need more logic, but this is a start.
+        int y = 20;
+        int x = 2;
+        int max_chars_per_line = UI_OLED_W / FONT_W;
+        
+        // Draw buffer content wrapped
+        int len = strlen(rx_buffer);
+        int drawn = 0;
+        while (drawn < len && y < UI_OLED_H) {
+            char line[20];
+            int chunk = len - drawn;
+            if (chunk > max_chars_per_line) chunk = max_chars_per_line;
+            
+            strncpy(line, rx_buffer + drawn, chunk);
+            line[chunk] = '\0';
+            
+            ssd1306_draw_string(disp, x, y, 1, line);
+            y += LINE_H;
+            drawn += chunk;
         }
     }
 
@@ -326,10 +366,11 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
                     g_cbs.on_usb_send(); // Change bus state to BUS_READ_SENSOR
                 }
             } else {
-                show_selection(g_disp, "Receiving...");
+                // show_selection(g_disp, "Receiving...");
                 if (g_cbs.on_usb_receive) { 
-                    g_cbs.on_usb_receive(); // Change bus state to BUS_READ_SENSOR
+                    g_cbs.on_usb_receive(); // Change bus state to BUS_UI_UPDATE (or keep it)
                 }
+                g_state = UI_STATE_USB_RECEIVING;
             }
         }
 
@@ -345,6 +386,10 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
             } else { 
                 g_state = UI_STATE_MAIN_MENU; 
             }
+        }
+    } else if (g_state == UI_STATE_USB_RECEIVING) {
+        if (cmd == UI_CMD_SCROLL_BACK) {
+            g_state = UI_STATE_USB_MENU;
         }
     }
 

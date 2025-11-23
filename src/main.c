@@ -20,6 +20,7 @@ QueueHandle_t stateQ;
 QueueHandle_t busStateQ;
 QueueHandle_t morseQ;
 QueueHandle_t uiQ;
+QueueHandle_t usbRxQ;
 
 
 int main(void) {
@@ -41,7 +42,7 @@ int main(void) {
     configASSERT(stateQ != NULL);
 
     busStateQ = xQueueCreate(64, sizeof(bus_state));
-    configASSERT(stateQ != NULL);
+    configASSERT(busStateQ != NULL);
 
     // Jono morsemerkeille
     morseQ = xQueueCreate(64, sizeof(symbol_ev_t));
@@ -50,6 +51,10 @@ int main(void) {
     // Jono UI-komennoille
     uiQ = xQueueCreate(10, sizeof(ui_cmd_t));
     configASSERT(uiQ != NULL);
+
+    // Jono USB-vastaanotolle
+    usbRxQ = xQueueCreate(64, sizeof(char));
+    configASSERT(usbRxQ != NULL);
 
     // State machine
     xTaskCreate(stateMachineTask, "State", 1024, NULL, 2, NULL);

@@ -13,6 +13,7 @@ extern QueueHandle_t stateQ;
 extern QueueHandle_t busStateQ;
 extern QueueHandle_t morseQ;
 extern QueueHandle_t uiQ;
+extern QueueHandle_t usbRxQ;
 
 static ssd1306_t disp;
 
@@ -116,9 +117,16 @@ void ui_task(void *params) {
     ui_menu_init(&disp, &callbacks);
 
     ui_cmd_t cmd;
+    char rx_char;
     while (1) {
-        if (xQueueReceive(uiQ, &cmd, portMAX_DELAY) == pdTRUE) {
+        // Poll UI commands (non-blocking or short wait)
+        if (xQueueReceive(uiQ, &cmd, 10) == pdTRUE) {
             ui_menu_process_cmd(cmd);
+        }
+
+        // Poll USB Receive queue
+        if (xQueueReceive(usbRxQ, &rx_char, 0) == pdTRUE) {
+            ui_menu_add_rx_char(rx_char);
         }
     }
 }

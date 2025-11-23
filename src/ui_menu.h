@@ -23,6 +23,7 @@ typedef enum {
     UI_STATE_SETUP_MENU,        // UUSI: Setup-päävalikko
     UI_STATE_ORIENT_MENU,       // UUSI: Orientation-alavalikko
     UI_STATE_USB_MENU,
+    UI_STATE_USB_RECEIVING,     // UUSI: USB-vastaanottotila
     UI_STATE_CONFIRM_SHUTDOWN
 } ui_state_t;
 
@@ -43,6 +44,7 @@ void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs);
 void ui_wakeup(ssd1306_t* disp);
 void ui_menu_process_cmd(ui_cmd_t cmd);
 void ui_menu_force_redraw(void);
+void ui_menu_add_rx_char(char c);
 
 ui_state_t ui_menu_get_state(void);
 int ui_menu_get_main_selection(void);
