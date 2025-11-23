@@ -114,7 +114,9 @@ static void draw_ui(ssd1306_t *disp){
             int y = 16 + i * LINE_H;
             draw_menu_icon(disp, 4, y, i);
             ssd1306_draw_string(disp, 28, y + 4, 1, main_items[i]);
-            if (i == sel_main) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
+            if (i == sel_main) { 
+                ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H); 
+            }
         }
 
     } else if (g_state == UI_STATE_CONNECT_MENU) {
@@ -122,7 +124,9 @@ static void draw_ui(ssd1306_t *disp){
         for (int i = 0; i < connect_count; i++) {
             int y = 16 + i * LINE_H;
             ssd1306_draw_string(disp, 28, y + 4, 1, connect_items[i]);
-            if (i == sel_connect) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
+            if (i == sel_connect) { 
+                ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H); 
+            }
         }
 
     } else if (g_state == UI_STATE_SETUP_MENU) {
@@ -131,7 +135,9 @@ static void draw_ui(ssd1306_t *disp){
             int y = 16 + i * LINE_H;
             // PIIRRETÄÄN X=2 ETTÄ PITKÄ TEKSTI MAHTUU
             ssd1306_draw_string(disp, 2, y + 4, 1, setup_items[i]);
-            if (i == sel_setup) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
+            if (i == sel_setup) { 
+                ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H); 
+            }
         }
 
     } else if (g_state == UI_STATE_ORIENT_MENU) {
@@ -139,7 +145,9 @@ static void draw_ui(ssd1306_t *disp){
         for (int i = 0; i < orient_count; i++) {
             int y = 16 + i * LINE_H;
             ssd1306_draw_string(disp, 28, y + 4, 1, orient_items[i]);
-            if (i == sel_orient) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
+            if (i == sel_orient) { 
+                ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H); 
+            }
         }
 
     } else if (g_state == UI_STATE_USB_MENU) {
@@ -147,7 +155,9 @@ static void draw_ui(ssd1306_t *disp){
         for (int i = 0; i < usb_count; i++) {
             int y = 16 + i * LINE_H;
             ssd1306_draw_string(disp, 28, y + 4, 1, usb_items[i]);
-            if (i == sel_usb) ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H);
+            if (i == sel_usb) { 
+                ssd1306_invert_rect(disp, 0, y, UI_OLED_W, LINE_H); 
+            }
         }
 
     } else if (g_state == UI_STATE_CONFIRM_SHUTDOWN) {
@@ -156,14 +166,16 @@ static void draw_ui(ssd1306_t *disp){
         for (int i = 0; i < confirm_count; i++) {
             int y = start_y + i * 12;
             ssd1306_draw_string(disp, 20, y, 1, confirm_items[i]);
-            if (i == sel_confirm) ssd1306_invert_rect(disp, 18, y - 2, 40, 12);
+            if (i == sel_confirm) { 
+                ssd1306_invert_rect(disp, 18, y - 2, 40, 12); 
+            }
         }
     }
 
     ssd1306_show(disp);
 }
 
-static void show_selection_and_return(ssd1306_t *disp, const char *msg, ui_state_t ret){
+static void show_selection(ssd1306_t *disp, const char *msg){
     ssd1306_clear(disp);
     
     int len = text_chars(msg);
@@ -184,13 +196,17 @@ static void perform_shutdown(ssd1306_t *disp){
     ssd1306_draw_string(disp, 10, 28, 1, "Shutting down...");
     ssd1306_invert_rect(disp, 0, 0, UI_OLED_W, UI_OLED_H);
     ssd1306_show(disp);
-    if (g_cbs.on_shutdown) g_cbs.on_shutdown();
+    if (g_cbs.on_shutdown) {
+        g_cbs.on_shutdown(); 
+    }
 }
 
 // ---------- Julkiset ----------
 void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs){
     g_disp = disp;
-    if (cbs) g_cbs = *cbs;
+    if (cbs) { 
+        g_cbs = *cbs; 
+    }
 
     g_state = UI_STATE_MAIN_MENU;
     sel_main = 0; 
@@ -205,7 +221,9 @@ void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs){
 }
 
 void ui_menu_process_cmd(ui_cmd_t cmd){
-    if (!g_disp) return;
+    if (!g_disp) { 
+        return; 
+    }
 
     ui_state_t state_before = g_state;
     int main_before = sel_main;
@@ -216,63 +234,82 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
     int usb_before = sel_usb;
 
     if (g_state == UI_STATE_MAIN_MENU) {
-        if (cmd == UI_CMD_SCROLL) sel_main = (sel_main + 1) % main_count;
-        if (cmd == UI_CMD_SELECT) {
-            if (sel_main == 0) { g_state = UI_STATE_CONNECT_MENU; sel_connect = 0; }
-            else if (sel_main == 1) { g_state = UI_STATE_SETUP_MENU; sel_setup = 0; }
-            else if (sel_main == 2) { g_state = UI_STATE_CONFIRM_SHUTDOWN; sel_confirm = 1; }
+        if (cmd == UI_CMD_SCROLL) { 
+            sel_main = (sel_main + 1) % main_count; 
+        } else if (cmd == UI_CMD_SELECT) {
+            if (sel_main == 0) { 
+                g_state = UI_STATE_CONNECT_MENU; 
+                sel_connect = 0; 
+            } else if (sel_main == 1) { 
+                g_state = UI_STATE_SETUP_MENU; 
+                sel_setup = 0; 
+            } else if (sel_main == 2) { 
+                g_state = UI_STATE_CONFIRM_SHUTDOWN; 
+                sel_confirm = 1; 
+            }
         }
 
     } else if (g_state == UI_STATE_CONNECT_MENU) {
-        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU;
-        else if (cmd == UI_CMD_SCROLL) sel_connect = (sel_connect + 1) % connect_count;
-        if (cmd == UI_CMD_SELECT) {
-            if (sel_connect == 0) { g_state = UI_STATE_USB_MENU; sel_usb = 0; }
-            else { 
-                if (g_cbs.on_connect_wireless) g_cbs.on_connect_wireless(); 
-                show_selection_and_return(g_disp, "Coming soon!", UI_STATE_MAIN_MENU); 
+        if (cmd == UI_CMD_SCROLL_BACK) { 
+            g_state = UI_STATE_MAIN_MENU; 
+        } else if (cmd == UI_CMD_SCROLL) { 
+            sel_connect = (sel_connect + 1) % connect_count; 
+        } else if (cmd == UI_CMD_SELECT) {
+            if (sel_connect == 0) { 
+                g_state = UI_STATE_USB_MENU; 
+                sel_usb = 0; 
+            } else { 
+                if (g_cbs.on_connect_wireless) { 
+                    g_cbs.on_connect_wireless(); 
+                }
+                show_selection(g_disp, "Coming soon!"); 
             }
         }
     
     } else if (g_state == UI_STATE_SETUP_MENU) { 
-        // --- Back poistettu, logiikka yksinkertaistettu ---
-        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_MAIN_MENU; // Ainoa tapa poistua
-        else if (cmd == UI_CMD_SCROLL) sel_setup = (sel_setup + 1) % setup_count;
-        
-        if (cmd == UI_CMD_SELECT) {
+        if (cmd == UI_CMD_SCROLL_BACK) { 
+            g_state = UI_STATE_MAIN_MENU; // Ainoa tapa poistua 
+        } else if (cmd == UI_CMD_SCROLL) { 
+            sel_setup = (sel_setup + 1) % setup_count; 
+        } else if (cmd == UI_CMD_SELECT) {
             // Ainoa vaihtoehto on Screen Orientation
             g_state = UI_STATE_ORIENT_MENU;
             sel_orient = 0;
         }
 
     } else if (g_state == UI_STATE_ORIENT_MENU) {
-        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_SETUP_MENU;
-        else if (cmd == UI_CMD_SCROLL) sel_orient = (sel_orient + 1) % orient_count;
-        
-        if (cmd == UI_CMD_SELECT) {
+        if (cmd == UI_CMD_SCROLL_BACK) { 
+            g_state = UI_STATE_SETUP_MENU; 
+        } else if (cmd == UI_CMD_SCROLL) { 
+            sel_orient = (sel_orient + 1) % orient_count; 
+        } else if (cmd == UI_CMD_SELECT) {
             if (sel_orient == 0) {
                 if (g_cbs.on_orient_normal) g_cbs.on_orient_normal();
-                show_selection_and_return(g_disp, "Set: Normal", UI_STATE_SETUP_MENU);
+                show_selection(g_disp, "Set: Normal");
             } else {
                 if (g_cbs.on_orient_flipped) g_cbs.on_orient_flipped();
-                show_selection_and_return(g_disp, "Set: Flipped", UI_STATE_SETUP_MENU);
+                show_selection(g_disp, "Set: Flipped");
             }
-            // Pieni viive, jotta käyttäjä ehtii nähdä vahvistuksen
+            sleep_ms(50); // Pieni viive, jotta käyttäjä ehtii nähdä vahvistuksen
             g_state = UI_STATE_SETUP_MENU; // Palataan Setuppiin
             need_redraw = true;
         }
 
     } else if (g_state == UI_STATE_USB_MENU) {
-        if (cmd == UI_CMD_SCROLL_BACK) g_state = UI_STATE_CONNECT_MENU;
-        else if (cmd == UI_CMD_SCROLL) sel_usb = (sel_usb + 1) % usb_count;
-        if (cmd == UI_CMD_SELECT) {
-            if (g_cbs.on_connect_usb) g_cbs.on_connect_usb();
+        if (cmd == UI_CMD_SCROLL_BACK) { 
+            g_state = UI_STATE_CONNECT_MENU; 
+        } else if (cmd == UI_CMD_SCROLL) { 
+            sel_usb = (sel_usb + 1) % usb_count; 
+        } else if (cmd == UI_CMD_SELECT) {
+            if (g_cbs.on_connect_usb) { 
+                g_cbs.on_connect_usb(); 
+            }
             if (sel_usb == 0) {
-                // if (g_cbs.on_usb_send) g_cbs.on_usb_send();
-                show_selection_and_return(g_disp, "Sending...", UI_STATE_MAIN_MENU);
+                show_selection(g_disp, "Sending...");
+                if (g_cbs.on_usb_send) g_cbs.on_usb_send();
             } else {
-                // if (g_cbs.on_usb_receive) g_cbs.on_usb_receive();
-                show_selection_and_return(g_disp, "Receiving...", UI_STATE_MAIN_MENU);
+                show_selection(g_disp, "Receiving...");
+                if (g_cbs.on_usb_receive) g_cbs.on_usb_receive();
             }
         }
 

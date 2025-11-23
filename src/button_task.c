@@ -125,8 +125,7 @@ void buttonTask(void *pvParameters)
                 if (sw1_stable) { 
                     // --- PAINETTU (Falling Edge) ---
                     sw1_press_start = now; 
-                }
-                else {
+                } else {
                     // --- VAPAUTETTU (Rising Edge) ---
                     uint32_t duration = (now - sw1_press_start) * portTICK_PERIOD_MS;
 
@@ -142,15 +141,14 @@ void buttonTask(void *pvParameters)
                             sw1_pending_double = true;
                             sw1_release_time = now;
                         }
-                    } 
-                    else if (currentState == STATE_USB_CONNECTED) {
+                    } else if (currentState == STATE_USB_CONNECTED) {
                         // --- MORSE-TILA ---
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
                             // Tuplaklikki -> Morse END_MSG
                             morse_send_end_msg();
+                            // send_ui_cmd(UI_CMD_SCROLL_BACK); tämän lisäksi pittää vaihtaa statea
                             sw1_pending_double = false;
-                        } 
-                        else {
+                        } else {
                             // Yksittäinen painallus -> Morse GAP_CHAR
                             sw1_pending_double = true;
                             sw1_release_time = now;
@@ -193,8 +191,7 @@ void buttonTask(void *pvParameters)
                     if (currentState == STATE_IDLE || currentState == STATE_MENU) {
                         // UI: Select
                         send_ui_cmd(UI_CMD_SELECT);
-                    } 
-                    else {
+                    } else if (currentState == STATE_USB_CONNECTED){
                         // -> Morse GAP_WORD
                         morse_send_word_gap();
                     }

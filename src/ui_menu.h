@@ -27,11 +27,9 @@ typedef enum {
 
 typedef struct {
     void (*on_connect_wireless)(void);
-    // void (*on_usb_send)(void);
-    // void (*on_usb_receive)(void);
+    void (*on_usb_send)(void);
+    void (*on_usb_receive)(void);
     void (*on_connect_usb) (void);
-    
-    // UUDET CALLBACKIT
     void (*on_orient_normal)(void);
     void (*on_orient_flipped)(void);
     
@@ -45,8 +43,8 @@ void ui_menu_force_redraw(void);
 ui_state_t ui_menu_get_state(void);
 int ui_menu_get_main_selection(void);
 int ui_menu_get_connect_selection(void);
-int ui_menu_get_setup_selection(void); // UUSI
-int ui_menu_get_orient_selection(void); // UUSI
+int ui_menu_get_setup_selection(void);
+int ui_menu_get_orient_selection(void);
 int ui_menu_get_usb_selection(void);
 int ui_menu_get_confirm_selection(void);
 
