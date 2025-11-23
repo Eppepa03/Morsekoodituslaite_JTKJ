@@ -129,8 +129,7 @@ void ui_task(void *params) {
         // Poll USB Receive queue
         char rx_buf[CFG_TUD_CDC_RX_BUFSIZE + 1];
         if (xQueueReceive(usbRxQ, rx_buf, 0) == pdTRUE) {
-            printf("jono");
-            // ui_menu_add_rx_char(rx_char);
+            ui_menu_add_rx_string(rx_char);
         }
     }
 }

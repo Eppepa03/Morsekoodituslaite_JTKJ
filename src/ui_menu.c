@@ -53,18 +53,21 @@ static ui_menu_callbacks_t g_cbs = {0};
 // USB Receive Buffer
 static char rx_buffer[128] = ""; // Simple buffer for received text
 
-void ui_menu_add_rx_char(char c[32]) {
+void ui_menu_add_rx_string(const char *str) {
     size_t len = strlen(rx_buffer);
-    if (len < sizeof(rx_buffer) - 1) {
-        rx_buffer[len] = c[0];
-        rx_buffer[len + 1] = '\0';
+    size_t add_len = strlen(str);
+
+    if (len + add_len < sizeof(rx_buffer) - 1) {
+        strcat(rx_buffer, str);
     } else {
-        // Buffer full, shift left (simple scrolling)
-        memmove(rx_buffer, rx_buffer + 1, len);
-        rx_buffer[len - 1] = c[0];
+        // Shift left to make room
+        size_t shift = (len + add_len) - (sizeof(rx_buffer) - 1);
+        memmove(rx_buffer, rx_buffer + shift, len - shift);
+        strcat(rx_buffer, str);
     }
     need_redraw = true;
 }
+
 
 // ---------- Invert-apurit ----------
 static void ssd1306_invert_rect(ssd1306_t *p, int x, int y, int w, int h){

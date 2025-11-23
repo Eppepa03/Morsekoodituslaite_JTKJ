@@ -31,6 +31,9 @@ int main(void) {
     init_i2c_default();
     init_red_led();
 
+    // Initialize TinyUSB 
+    tusb_init();
+
     // Initializions for the IMU
     int rc = init_ICM42670();
     if (rc != 0) { while (1) { printf("[SENSOR] IMU init FAIL\r\n"); sleep_ms(1000); } }
@@ -54,7 +57,7 @@ int main(void) {
     configASSERT(uiQ != NULL);
 
     // Jono USB-vastaanotolle
-    usbRxQ = xQueueCreate(10, sizeof(uint8_t) * (CFG_TUD_CDC_RX_BUFSIZE + 1));
+    usbRxQ = xQueueCreate(10, BUFFER_SIZE);
     configASSERT(usbRxQ != NULL);
 
     // State machine
@@ -77,9 +80,6 @@ int main(void) {
     #if (configNUMBER_OF_CORES > 1)
         vTaskCoreAffinitySet(handle_usb, 1u << 0);
     #endif
-
-    // Initialize TinyUSB 
-    tusb_init();
 
     // Start FreeRTOS
     vTaskStartScheduler();

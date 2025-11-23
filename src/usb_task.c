@@ -17,11 +17,12 @@ extern QueueHandle_t usbRxQ;
 
 // USB vastaanotto callback, jota kutsutaan, kun CDC-liittymään tulee dataa
 void tud_cdc_rx_cb(uint8_t interface) {
+    printf("RX callback triggered\n");
     uint8_t buf[CFG_TUD_CDC_RX_BUFSIZE + 1];
 
     uint32_t count = tud_cdc_n_read(interface, buf, sizeof(buf));
 
-    if (interface == 1) {
+    if (interface == 0) {
         xQueueSend(usbRxQ, buf, 0);
 
         // Vastataan OK
@@ -34,7 +35,9 @@ void tud_cdc_rx_cb(uint8_t interface) {
 
 void usbTask(void *args) {
     symbol_ev_t morseChar;
+    char result[32] = "";
     char message[8];
+    
     for (;;) {
         tud_task(); // Käytetään TinyUSB:tä. Tämän pitää kutsua tehtävän alussa, jotta USB stack pysyy pystyssä.
         
@@ -45,15 +48,22 @@ void usbTask(void *args) {
             if (tud_cdc_connected() && currentState == STATE_USB_CONNECTED) {
 
                 switch (morseChar) {
-                    case DOT: strcpy(message, "."); break;
-                    case DASH: strcpy(message, "-"); break;
-                    case GAP_CHAR: strcpy(message, " "); break;
-                    case GAP_WORD: strcpy(message, "  "); break;
-                    case END_MSG: strcpy(message, "\r\n"); break;
+                    case DOT: strcpy(message, "."); printf("Recorded: %s\n", message); break;
+                    case DASH: strcpy(message, "-"); printf("Recorded: %s\n", message); break;
+                    case GAP_CHAR: strcpy(message, " "); printf("Recorded: Character gap\n"); break;
+                    case GAP_WORD: strcpy(message, "  "); printf("Recorded: Word gap\n"); break;
+                    case END_MSG: strcpy(message, "  \n"); printf("Recorded: End message\n"); break;
                 }
 
-                tud_cdc_write(&message, strlen(message));
-                tud_cdc_write_flush();
+                // Lisää message lopulliseen jonoon
+                strncat(result, message, sizeof(result) - strlen(result) - 1);
+
+                // Jos END_MSG, lähetä koko viesti ja tyhjennä puskuri
+                if (morseChar == END_MSG) {
+                    tud_cdc_write(result, strlen(result));
+                    tud_cdc_write_flush();
+                    result[0] = '\0';
+                }
 
                 // Ledin vlikautus end_msg:in kohdalla
                 if (morseChar == END_MSG) {
