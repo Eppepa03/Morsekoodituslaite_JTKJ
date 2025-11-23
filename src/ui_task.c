@@ -33,7 +33,7 @@ static void on_usb_send(void) {
 }
 static void on_usb_receive(void) { 
     printf("USB Receive valittu\n");
-    bus_state nextBusState = BUS_READ_SENSOR;
+    bus_state nextBusState = BUS_UI_UPDATE;
     xQueueSend(busStateQ, &nextBusState, 0);
 }
 static void on_usb(void) { 
