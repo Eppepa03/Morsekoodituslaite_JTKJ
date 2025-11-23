@@ -7,6 +7,7 @@
 #include "event.h"
 #include "state_machine.h"
 #include <stdio.h>
+#include "tusb.h"
 
 // Haetaan ulkopuoliset jonot ja tila
 extern QueueHandle_t stateQ;
@@ -117,7 +118,8 @@ void ui_task(void *params) {
     ui_menu_init(&disp, &callbacks);
 
     ui_cmd_t cmd;
-    char rx_char;
+    char rx_char[32];
+
     while (1) {
         // Poll UI commands (non-blocking or short wait)
         if (xQueueReceive(uiQ, &cmd, 10) == pdTRUE) {
@@ -125,8 +127,10 @@ void ui_task(void *params) {
         }
 
         // Poll USB Receive queue
-        if (xQueueReceive(usbRxQ, &rx_char, 0) == pdTRUE) {
-            ui_menu_add_rx_char(rx_char);
+        char rx_buf[CFG_TUD_CDC_RX_BUFSIZE + 1];
+        if (xQueueReceive(usbRxQ, rx_buf, 0) == pdTRUE) {
+            printf("jono");
+            // ui_menu_add_rx_char(rx_char);
         }
     }
 }

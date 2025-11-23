@@ -53,15 +53,15 @@ static ui_menu_callbacks_t g_cbs = {0};
 // USB Receive Buffer
 static char rx_buffer[128] = ""; // Simple buffer for received text
 
-void ui_menu_add_rx_char(char c) {
+void ui_menu_add_rx_char(char c[32]) {
     size_t len = strlen(rx_buffer);
     if (len < sizeof(rx_buffer) - 1) {
-        rx_buffer[len] = c;
+        rx_buffer[len] = c[0];
         rx_buffer[len + 1] = '\0';
     } else {
         // Buffer full, shift left (simple scrolling)
         memmove(rx_buffer, rx_buffer + 1, len);
-        rx_buffer[len - 1] = c;
+        rx_buffer[len - 1] = c[0];
     }
     need_redraw = true;
 }

@@ -53,7 +53,7 @@ int main(void) {
     configASSERT(uiQ != NULL);
 
     // Jono USB-vastaanotolle
-    usbRxQ = xQueueCreate(64, sizeof(char));
+    usbRxQ = xQueueCreate(10, sizeof(uint8_t) * (CFG_TUD_CDC_RX_BUFSIZE + 1));
     configASSERT(usbRxQ != NULL);
 
     // State machine

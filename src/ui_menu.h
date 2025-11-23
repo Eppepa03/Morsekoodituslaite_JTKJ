@@ -44,7 +44,7 @@ void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs);
 void ui_wakeup(ssd1306_t* disp);
 void ui_menu_process_cmd(ui_cmd_t cmd);
 void ui_menu_force_redraw(void);
-void ui_menu_add_rx_char(char c);
+void ui_menu_add_rx_char(char c[32]);
 
 ui_state_t ui_menu_get_state(void);
 int ui_menu_get_main_selection(void);

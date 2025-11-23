@@ -11,6 +11,24 @@
 extern QueueHandle_t morseQ;
 extern QueueHandle_t stateQ;
 extern QueueHandle_t uiQ;
+extern QueueHandle_t usbRxQ;
+
+// USB vastaanotto callback, jota kutsutaan, kun CDC-liittymään tulee dataa
+void tud_cdc_rx_cb(uint8_t interface) {
+    uint8_t buf[CFG_TUD_CDC_RX_BUFSIZE + 1];
+
+    uint32_t count = tud_cdc_n_read(interface, buf, sizeof(buf));
+
+    if (interface == 1) {
+        xQueueSend(usbRxQ, buf, 0);
+
+        // Vastataan OK
+        tud_cdc_n_write(interface, (uint8_t const *) "OK\n", 3);
+        tud_cdc_n_write_flush(interface);
+    }
+
+    if (count < sizeof(buf)) buf[count] = '\0';
+}
 
 void usbTask(void *args) {
     symbol_ev_t morseChar;
