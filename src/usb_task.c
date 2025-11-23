@@ -45,6 +45,5 @@ void usbTask(void *args) {
                 }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
