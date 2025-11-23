@@ -25,7 +25,7 @@ void stateMachineTask(void *pvParameters) {
     main_state nextMainState;
 
     for (;;) {
-        if (xQueueReceive(stateQ, &nextMainState, portMAX_DELAY)) {
+        if (xQueueReceive(stateQ, &nextMainState, 50)) {
             switch (nextMainState) {
                 case STATE_IDLE:
                     changeState(STATE_IDLE);
@@ -44,7 +44,7 @@ void stateMachineTask(void *pvParameters) {
 
         bus_state nextBusState;
 
-        if (xQueueReceive(busStateQ, &nextBusState, portMAX_DELAY)) {
+        if (xQueueReceive(busStateQ, &nextBusState, 50)) {
             switch (nextBusState) {
                 case BUS_IDLE:
                     changeBusState(BUS_IDLE);

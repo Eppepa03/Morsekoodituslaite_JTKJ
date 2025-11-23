@@ -312,12 +312,6 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         }
 
     } else if (g_state == UI_STATE_USB_MENU) {
-        // Palatessa USB sendistä, varmistetaan, että väylä siirtyy UI-tilaan
-        if (currentBusState != BUS_UI_UPDATE) {
-            if (g_cbs.on_return) {
-                g_cbs.on_return();
-            }
-        }
         if (cmd == UI_CMD_SCROLL_BACK) { 
             g_state = UI_STATE_CONNECT_MENU;
             if (g_cbs.on_return) {
