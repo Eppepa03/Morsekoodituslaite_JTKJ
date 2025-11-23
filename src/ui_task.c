@@ -57,6 +57,8 @@ static void on_return(void) {
     printf("Return valittu\n");
     bus_state nextBusState = BUS_UI_UPDATE;
     xQueueSend(busStateQ, &nextBusState, 0);
+    main_state nextState = STATE_MENU;
+    xQueueSend(stateQ, &nextState, 0);
 }
 
 static void on_orient_normal(void) {

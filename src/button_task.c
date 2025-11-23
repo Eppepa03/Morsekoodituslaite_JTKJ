@@ -76,8 +76,7 @@ static void send_ui_cmd(ui_cmd_t cmd) {
 // ---------------------------------------------------------
 // PÄÄTASKI
 // ---------------------------------------------------------
-void buttonTask(void *pvParameters)
-{
+void buttonTask(void *pvParameters) {
     (void)pvParameters;
 
     // SDK:n init_hat_sdk() on todennäköisesti ajettu mainissa,
@@ -141,7 +140,7 @@ void buttonTask(void *pvParameters)
                             sw1_pending_double = true;
                             sw1_release_time = now;
                         }
-                    } else {
+                    } else if (currentBusState == BUS_READ_SENSOR) {
                         // --- MORSE-TILA ---
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
                             // Tuplaklikki -> Morse END_MSG

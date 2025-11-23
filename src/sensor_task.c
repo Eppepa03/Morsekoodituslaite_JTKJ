@@ -47,13 +47,9 @@ void sensorTask(void *pvParameters)
 
     while (1)
     {
-        if (currentState == STATE_USB_CONNECTED) {
+        if (currentState == STATE_USB_CONNECTED && currentBusState == BUS_READ_SENSOR) {
             float ax, ay, az, gx, gy, gz, t;
-            if (currentBusState == BUS_READ_SENSOR) {
-                ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
-            } else {
-                ax = ay = az = gx = gy = gz = t = 0;
-            }
+            ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
 
             // Total gyro magnitude in degrees/s
             float gmag = sqrtf(gx*gx + gy*gy + gz*gz);

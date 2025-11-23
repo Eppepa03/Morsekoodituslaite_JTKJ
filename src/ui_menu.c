@@ -284,7 +284,7 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
     
     } else if (g_state == UI_STATE_SETUP_MENU) { 
         if (cmd == UI_CMD_SCROLL_BACK) { 
-            g_state = UI_STATE_MAIN_MENU; // Ainoa tapa poistua 
+            g_state = UI_STATE_MAIN_MENU;
         } else if (cmd == UI_CMD_SCROLL) { 
             sel_setup = (sel_setup + 1) % setup_count; 
         } else if (cmd == UI_CMD_SELECT) {
@@ -321,7 +321,7 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         if (cmd == UI_CMD_SCROLL_BACK) { 
             g_state = UI_STATE_CONNECT_MENU;
             if (g_cbs.on_return) {
-                g_cbs.on_return(); // Vaihdetaan tilaksi BUS_UI_UPDATE
+                g_cbs.on_return(); // Vaihdetaan tilaksi BUS_UI_UPDATE ja STATE_MENU
             }
         } else if (cmd == UI_CMD_SCROLL) { 
             sel_usb = (sel_usb + 1) % usb_count; 
