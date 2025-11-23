@@ -91,8 +91,6 @@ static void say_hi_and_go_idle(void) {
     ssd1306_draw_string(&disp, 0, 0, 1, "    TERVETULOA!");
     ssd1306_show(&disp);
     vTaskDelay(pdMS_TO_TICKS(1500));
-    ssd1306_clear(&disp);
-    ssd1306_show(&disp);
 
     bus_state nextBusState = BUS_IDLE;
     xQueueSend(busStateQ, &nextBusState, 0);
@@ -113,7 +111,7 @@ void ui_task(void *params) {
 
     say_hi_and_go_idle();
 
-    ui_menu_init(&callbacks);
+    ui_menu_init(&disp, &callbacks);
 
     ui_cmd_t cmd;
     while (1) {

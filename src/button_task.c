@@ -146,7 +146,7 @@ void buttonTask(void *pvParameters)
                         if (sw1_pending_double && (now - sw1_release_time) <= DOUBLE_TKS) {
                             // Tuplaklikki -> Morse END_MSG
                             morse_send_end_msg();
-                            // send_ui_cmd(UI_CMD_SCROLL_BACK); tämän lisäksi pittää vaihtaa statea
+                            send_ui_cmd(UI_CMD_SCROLL_BACK);
                             sw1_pending_double = false;
                         } else {
                             // Yksittäinen painallus -> Morse GAP_CHAR

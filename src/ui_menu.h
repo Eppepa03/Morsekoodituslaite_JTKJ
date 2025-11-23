@@ -39,7 +39,7 @@ typedef struct {
     void (*on_shutdown)(void);
 } ui_menu_callbacks_t;
 
-void ui_menu_init(const ui_menu_callbacks_t* cbs);
+void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs);
 void ui_wakeup(ssd1306_t* disp);
 void ui_menu_process_cmd(ui_cmd_t cmd);
 void ui_menu_force_redraw(void);

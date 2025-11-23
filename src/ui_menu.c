@@ -38,7 +38,7 @@ static const char* confirm_items[] = {"Yes", "No"};
 static const int confirm_count = 2;
 
 // Tilamuuttujat
-static volatile ui_state_t g_state = UI_STATE_MAIN_MENU;
+static volatile ui_state_t g_state = UI_STATE_IDLE;
 static volatile int sel_main = 0;
 static volatile int sel_connect = 0;
 static volatile int sel_setup = 0;
@@ -203,16 +203,17 @@ static void perform_shutdown(ssd1306_t *disp){
 }
 
 // ---------- Julkiset ----------
-void ui_menu_init(const ui_menu_callbacks_t* cbs){
+void ui_menu_init(ssd1306_t* disp, const ui_menu_callbacks_t* cbs){
     if (cbs) { 
         g_cbs = *cbs; 
     }
-
+    g_disp = disp;
     g_state = UI_STATE_IDLE;
 }
 
 void ui_wakeup(ssd1306_t* disp) {
-    draw_ui(disp);
+    g_state = UI_STATE_MAIN_MENU;
+
     sel_main = 0; 
     sel_connect = 0; 
     sel_setup = 0; 
@@ -236,7 +237,7 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
     int usb_before = sel_usb;
 
     if (g_state == UI_STATE_IDLE) {
-        if (cmd = UI_CMD_SELECT) {
+        if (cmd == UI_CMD_SELECT) {
             // Wake up
             if (g_cbs.on_wake_up) {
                 g_cbs.on_wake_up();
@@ -260,12 +261,6 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         }
 
     } else if (g_state == UI_STATE_CONNECT_MENU) {
-        // Palatessa USB tai WIFI valikoista, varmistetaan, että väylä siirtyy UI-tilaan
-        if (currentBusState != BUS_UI_UPDATE) {
-            if (g_cbs.on_return) {
-                g_cbs.on_return();
-            }
-        }
 
         if (cmd == UI_CMD_SCROLL_BACK) { 
             g_state = UI_STATE_MAIN_MENU; 
@@ -274,6 +269,9 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         } else if (cmd == UI_CMD_SELECT) {
             if (sel_connect == 0) { 
                 g_state = UI_STATE_USB_MENU; 
+                if (g_cbs.on_connect_usb) { 
+                    g_cbs.on_connect_usb(); // Change main state to STATE_USB_CONNECTED
+                }
                 sel_usb = 0; 
             } else { 
                 // Tämän voisi vielä muokata omakseen, kuten UI_STATE_USB_MENU
@@ -314,12 +312,17 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
         }
 
     } else if (g_state == UI_STATE_USB_MENU) {
-        if (g_cbs.on_connect_usb) { 
-            g_cbs.on_connect_usb(); // Change main state to STATE_USB_CONNECTED
+        // Palatessa USB sendistä, varmistetaan, että väylä siirtyy UI-tilaan
+        if (currentBusState != BUS_UI_UPDATE) {
+            if (g_cbs.on_return) {
+                g_cbs.on_return();
+            }
         }
-
         if (cmd == UI_CMD_SCROLL_BACK) { 
-            g_state = UI_STATE_CONNECT_MENU; 
+            g_state = UI_STATE_CONNECT_MENU;
+            if (g_cbs.on_return) {
+                g_cbs.on_return(); // Vaihdetaan tilaksi BUS_UI_UPDATE
+            }
         } else if (cmd == UI_CMD_SCROLL) { 
             sel_usb = (sel_usb + 1) % usb_count; 
         } else if (cmd == UI_CMD_SELECT) {
