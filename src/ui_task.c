@@ -223,12 +223,11 @@ void ui_task(void *params) {
 
     // Initialize the Menu System with our callbacks
     ui_menu_init(&disp, &callbacks);
-
     ui_cmd_t cmd;
-    int end_count = 0;
     char last_rx_ch;
     char rx_ch;
-    char rx_string[32] = "";
+    char temp[8];
+    char rx_string[32];
 
     // --- Main Event Loop ---
     while (1) {
@@ -240,25 +239,31 @@ void ui_task(void *params) {
             ui_menu_process_cmd(cmd); // Update menu logic based on button press
         }
 
-        §
         // 2. Check for Incoming USB Data (for Receive Screen)
         // Use 0 wait time here (non-blocking) so we don't slow down the UI
         // if there is no USB data.
         if (xQueueReceive(usbRxQ, &rx_ch, 0) == pdTRUE) {
-            if (rx_ch != ' ' || rx_ch != '\0') {
-                strcpy(rx_string, &rx_ch);
-                printf("Received: %c\r\n", rx_ch);
-                end_count = 0;
-            } else if (last_rx_ch == ' ') {
-                end_count += 1;
+            
+            switch (rx_ch) {
+                case '.': strcpy(temp, "."); break;
+                case '-': strcpy(temp, "-"); break;
             }
-            if (end_count == 2) {
-                printf("End and send");
+
+            if (rx_ch != ' ') {
+                strncat(rx_string, temp, sizeof(rx_string) - strlen(rx_string) - 1);
+                printf("Received: %s\n", temp);
+                printf("State of string: %s\n", rx_string);
+            } else if (last_rx_ch == ' ') {
+                printf("End and send: %s\n", rx_string);
+                rx_string[strlen(rx_string)] = '\0';
                 ui_menu_add_rx_string(rx_string); // Send string to the scrolling text buffer
+                rx_string[0] = '\0';
             }
             last_rx_ch = rx_ch;
         }
 
         vTaskDelay(pdMS_TO_TICKS(1));
     }
+
+   
 }

@@ -54,7 +54,6 @@ static ui_menu_callbacks_t g_cbs = {0};
 static char rx_buffer[128] = ""; // Simple buffer for received text
 
 void ui_menu_add_rx_string(const char *str) {
-    printf("Recieved: %s\r\n", str);
     size_t len = strlen(rx_buffer);
     size_t add_len = strlen(str);
     if (len + add_len < sizeof(rx_buffer) - 1) {
