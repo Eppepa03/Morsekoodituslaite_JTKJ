@@ -39,6 +39,12 @@ void stateMachineTask(void *pvParameters) {
                 case STATE_WIFI_CONNECTED:
                     changeState(STATE_WIFI_CONNECTED);
                     break;
+                case STATE_USB_RECEIVE:
+                    changeState(STATE_USB_RECEIVE);
+                    break;
+                case STATE_USB_SEND:
+                    changeState(STATE_USB_SEND);
+                    break;
             }
         }
 

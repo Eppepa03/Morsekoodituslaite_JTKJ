@@ -47,7 +47,7 @@ void sensorTask(void *pvParameters)
 
     while (1)
     {
-        if (currentState == STATE_USB_CONNECTED && currentBusState == BUS_READ_SENSOR) {
+        if (currentState == STATE_USB_SEND && currentBusState == BUS_READ_SENSOR) {
             float ax, ay, az, gx, gy, gz, t;
             ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t);
 

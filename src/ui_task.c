@@ -13,11 +13,13 @@
 #include "task.h"
 #include "queue.h"
 #include "tkjhat/ssd1306.h"
+#include "pico/stdio.h"
 #include "ui_menu.h"
 #include "tkjhat/sdk.h"
 #include "event.h"
 #include "state_machine.h"
 #include <stdio.h>
+#include <string.h>
 
 // -------------------------------------------------------------------------
 // External Queue Handles
@@ -71,6 +73,8 @@ static void on_usb_send(void) {
     printf("USB Send Selected\n"); 
     bus_state nextBusState = BUS_READ_SENSOR;
     xQueueSend(busStateQ, &nextBusState, 0);
+    main_state nextState = STATE_USB_SEND;
+    xQueueSend(stateQ, &nextState, 0);
 }
 
 /**
@@ -81,6 +85,8 @@ static void on_usb_receive(void) {
     printf("USB Receive Selected\n");
     bus_state nextBusState = BUS_UI_UPDATE;
     xQueueSend(busStateQ, &nextBusState, 0);
+    main_state nextState = STATE_USB_RECEIVE;
+    xQueueSend(stateQ, &nextState, 0);
 }
 
 /**
@@ -219,7 +225,10 @@ void ui_task(void *params) {
     ui_menu_init(&disp, &callbacks);
 
     ui_cmd_t cmd;
-    char rx_char;
+    int end_count = 0;
+    char last_rx_ch;
+    char rx_ch;
+    char rx_string[32] = "";
 
     // --- Main Event Loop ---
     while (1) {
@@ -227,15 +236,29 @@ void ui_task(void *params) {
         // xQueueReceive checks 'uiQ'. If data is available, it goes into 'cmd'.
         // Wait up to 10 ticks. This serves as a small delay to prevent this loop 
         // from hogging 100% CPU, while still staying responsive.
-        if (xQueueReceive(uiQ, &cmd, 10) == pdTRUE) {
+        if (xQueueReceive(uiQ, &cmd, pdMS_TO_TICKS(10)) == pdTRUE) {
             ui_menu_process_cmd(cmd); // Update menu logic based on button press
         }
 
+        §
         // 2. Check for Incoming USB Data (for Receive Screen)
         // Use 0 wait time here (non-blocking) so we don't slow down the UI
         // if there is no USB data.
-        if (xQueueReceive(usbRxQ, &rx_char, 0) == pdTRUE) {
-            ui_menu_add_rx_char(rx_char); // Send char to the scrolling text buffer
+        if (xQueueReceive(usbRxQ, &rx_ch, 0) == pdTRUE) {
+            if (rx_ch != ' ' || rx_ch != '\0') {
+                strcpy(rx_string, &rx_ch);
+                printf("Received: %c\r\n", rx_ch);
+                end_count = 0;
+            } else if (last_rx_ch == ' ') {
+                end_count += 1;
+            }
+            if (end_count == 2) {
+                printf("End and send");
+                ui_menu_add_rx_string(rx_string); // Send string to the scrolling text buffer
+            }
+            last_rx_ch = rx_ch;
         }
+
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }

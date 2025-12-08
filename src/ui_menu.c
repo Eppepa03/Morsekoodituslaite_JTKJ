@@ -54,16 +54,16 @@ static ui_menu_callbacks_t g_cbs = {0};
 static char rx_buffer[128] = ""; // Simple buffer for received text
 
 void ui_menu_add_rx_string(const char *str) {
+    printf("Recieved: %s\r\n", str);
     size_t len = strlen(rx_buffer);
     size_t add_len = strlen(str);
-
     if (len + add_len < sizeof(rx_buffer) - 1) {
-        strcat(rx_buffer, str);
+        strncat(rx_buffer, str, sizeof(rx_buffer) - strlen(rx_buffer) - 1);
     } else {
         // Shift left to make room
         size_t shift = (len + add_len) - (sizeof(rx_buffer) - 1);
         memmove(rx_buffer, rx_buffer + shift, len - shift);
-        strcat(rx_buffer, str);
+        strncat(rx_buffer, str, sizeof(rx_buffer) - strlen(rx_buffer) - 1);
     }
     need_redraw = true;
 }
@@ -203,9 +203,9 @@ static void draw_ui(ssd1306_t *disp){
         int len = strlen(rx_buffer);
         int drawn = 0;
         while (drawn < len && y < UI_OLED_H) {
-            char line[20];
+            char line[20] = "";
             int chunk = len - drawn;
-            if (chunk > max_chars_per_line) chunk = max_chars_per_line;
+            if (chunk > max_chars_per_line) chunk = max_chars_per_line + 1;
             
             strncpy(line, rx_buffer + drawn, chunk);
             line[chunk] = '\0';
@@ -366,12 +366,12 @@ void ui_menu_process_cmd(ui_cmd_t cmd){
             if (sel_usb == 0) {
                 show_selection(g_disp, "Sending...");
                 if (g_cbs.on_usb_send) { 
-                    g_cbs.on_usb_send(); // Change bus state to BUS_READ_SENSOR
+                    g_cbs.on_usb_send(); // Change bus state to BUS_READ_SENSOR and main state to STATE_USB_SEND
                 }
             } else {
                 // show_selection(g_disp, "Receiving...");
                 if (g_cbs.on_usb_receive) { 
-                    g_cbs.on_usb_receive(); // Change bus state to BUS_UI_UPDATE (or keep it)
+                    g_cbs.on_usb_receive(); // Change bus state to BUS_UI_UPDATE (or keep it) and main state to STATE_USB_RECEIVE
                 }
                 g_state = UI_STATE_USB_RECEIVING;
             }

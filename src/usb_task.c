@@ -16,22 +16,22 @@ extern QueueHandle_t uiQ;
 extern QueueHandle_t usbRxQ;
 
 // USB vastaanotto callback, jota kutsutaan, kun CDC-liittymään tulee dataa
-void tud_cdc_rx_cb(uint8_t interface) {
-    printf("RX callback triggered\n");
-    uint8_t buf[CFG_TUD_CDC_RX_BUFSIZE + 1];
+// void tud_cdc_rx_cb(uint8_t interface) {
+//     printf("RX callback triggered\r\n");
+//     uint8_t buf[CFG_TUD_CDC_RX_BUFSIZE + 1];
 
-    uint32_t count = tud_cdc_n_read(interface, buf, sizeof(buf));
+//     uint32_t count = tud_cdc_n_read(interface, buf, sizeof(buf));
 
-    if (interface == 0) {
-        xQueueSend(usbRxQ, buf, 0);
+//     if (interface == 1) {
+//         xQueueSend(usbRxQ, buf, 0);
 
-        // Vastataan OK
-        tud_cdc_n_write(interface, (uint8_t const *) "OK\n", 3);
-        tud_cdc_n_write_flush(interface);
-    }
+//         // Vastataan OK
+//         tud_cdc_n_write(interface, (uint8_t const *) "OK\n", 3);
+//         tud_cdc_n_write_flush(interface);
+//     }
 
-    if (count < sizeof(buf)) buf[count] = '\0';
-}
+//     if (count < sizeof(buf)) buf[count] = '\0';
+// }
 
 void usbTask(void *args) {
     symbol_ev_t morseChar;
@@ -45,7 +45,7 @@ void usbTask(void *args) {
         if (xQueueReceive(morseQ, &morseChar, 0)) {
 
             // Lähetetään aakkoset TinyUSB:n avulla serial monitorille
-            if (tud_cdc_connected() && currentState == STATE_USB_CONNECTED) {
+            if (tud_cdc_connected() && currentState == STATE_USB_SEND) {
 
                 switch (morseChar) {
                     case DOT: strcpy(message, "."); printf("Recorded: %s\n", message); break;
@@ -79,6 +79,19 @@ void usbTask(void *args) {
                 }
             }
         }
+        // Vastaanotetaan morsekoodia
+        if (tud_cdc_connected() && currentState == STATE_USB_RECEIVE) {
+            int interface = 0;
+            while (tud_cdc_n_available(interface)) {
+                char ch = tud_cdc_n_read_char(interface);
+                xQueueSend(usbRxQ, &ch, portMAX_DELAY);
+
+                // Vastataan OK
+                // tud_cdc_n_write(interface, (uint8_t const *) "OK\n", 3);
+                // tud_cdc_n_write_flush(interface);
+            }
+        }
         vTaskDelay(pdMS_TO_TICKS(1));
+
     }
 }

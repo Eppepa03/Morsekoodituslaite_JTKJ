@@ -14,7 +14,7 @@
 #include "state_machine.h"
 
 #define CDC_ITF_TX 1
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 8
 
 QueueHandle_t stateQ;
 QueueHandle_t busStateQ;
