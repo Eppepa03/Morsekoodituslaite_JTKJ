@@ -123,7 +123,7 @@ void buttonTask(void *pvParameters) {
     gpio_init(SW1_PIN); gpio_set_dir(SW1_PIN, GPIO_IN); gpio_pull_up(SW1_PIN);
     gpio_init(SW2_PIN); gpio_set_dir(SW2_PIN, GPIO_IN); gpio_pull_up(SW2_PIN);
 
-    printf("Button Task started. Using SDK Pins: SW1=%d, SW2=%d\n", SW1_PIN, SW2_PIN);
+    printf("Button Task started. Using SDK Pins: SW1=%d, SW2=%d  \n", SW1_PIN, SW2_PIN);
 
     // --- State Variables for Button 1 (Complex Logic) ---
     bool       sw1_phys_prev = false; // The raw reading from the previous loop

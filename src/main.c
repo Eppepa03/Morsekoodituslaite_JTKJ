@@ -1,3 +1,8 @@
+/*
+Morsemaster9000
+Made by: Elisa Palola, Kaapo Holmi and Vili-Valtteri Vainiola
+*/
+
 
 #include "pico/stdlib.h"
 #include "FreeRTOS.h"
@@ -36,10 +41,10 @@ int main(void) {
 
     // Initializions for the IMU
     int rc = init_ICM42670();
-    if (rc != 0) { while (1) { printf("[SENSOR] IMU init FAIL\r\n"); sleep_ms(1000); } }
+    if (rc != 0) { while (1) { printf("[SENSOR] IMU init FAIL  \n"); sleep_ms(1000); } }
 
     rc = ICM42670_start_with_default_values();
-    if (rc != 0) { while (1) { printf("[SENSOR] IMU start FAIL\r\n"); sleep_ms(1000); } }
+    if (rc != 0) { while (1) { printf("[SENSOR] IMU start FAIL  \n"); sleep_ms(1000); } }
 
     // Jonot tilakomennoille
     stateQ = xQueueCreate(64, sizeof(main_state));

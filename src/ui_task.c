@@ -51,7 +51,7 @@ static ssd1306_t disp;
  * Transitions the system state to MENU and enables UI updates.
  */
 static void on_wake_up(void) {
-    printf("UI Woken up\n"); 
+    printf("UI Woken up  \n"); 
     
     // 1. Tell the hardware task to start updating the UI
     bus_state nextBusState = BUS_UI_UPDATE;
@@ -70,7 +70,7 @@ static void on_wake_up(void) {
  * Switches the bus state to read sensors (so data can be sent out).
  */
 static void on_usb_send(void) { 
-    printf("USB Send Selected\n"); 
+    printf("USB Send Selected  \n"); 
     bus_state nextBusState = BUS_READ_SENSOR;
     xQueueSend(busStateQ, &nextBusState, 0);
     main_state nextState = STATE_USB_SEND;
@@ -82,7 +82,7 @@ static void on_usb_send(void) {
  * Ensures the bus is ready to update the UI with incoming text.
  */
 static void on_usb_receive(void) { 
-    printf("USB Receive Selected\n");
+    printf("USB Receive Selected  \n");
     bus_state nextBusState = BUS_UI_UPDATE;
     xQueueSend(busStateQ, &nextBusState, 0);
     main_state nextState = STATE_USB_RECEIVE;
@@ -94,7 +94,7 @@ static void on_usb_receive(void) {
  * Switches the main application state to USB_CONNECTED.
  */
 static void on_usb(void) { 
-    printf("USB Connection Selected\n"); 
+    printf("USB Connection Selected  \n"); 
     main_state nextState = STATE_USB_CONNECTED;
     xQueueSend(stateQ, &nextState, 0);  
 }
@@ -103,7 +103,7 @@ static void on_usb(void) {
  * @brief Called when "Wireless" connection type is chosen.
  */
 static void on_wireless(void) { 
-    printf("Wireless Selected\n");
+    printf("Wireless Selected  \n");
     main_state nextState = STATE_WIFI_CONNECTED;
     xQueueSend(stateQ, &nextState, 0); 
 }
@@ -113,7 +113,7 @@ static void on_wireless(void) {
  * Sets both the hardware bus and main application to IDLE (low power/sleep).
  */
 static void on_shutdown(void) { 
-    printf("Shutdown Selected\n");
+    printf("Shutdown Selected  \n");
     
     // Stop hardware activity
     bus_state nextBusState = BUS_IDLE;
@@ -129,7 +129,7 @@ static void on_shutdown(void) {
  * returns to the main menu state.
  */
 static void on_return(void) { 
-    printf("Return Selected\n");
+    printf("Return Selected  \n");
     bus_state nextBusState = BUS_UI_UPDATE;
     xQueueSend(busStateQ, &nextBusState, 0);
     main_state nextState = STATE_MENU;
@@ -139,13 +139,13 @@ static void on_return(void) {
 // --- Screen Orientation Callbacks ---
 
 static void on_orient_normal(void) {
-    printf("Screen: Normal\n");
+    printf("Screen: Normal  \n");
     ssd1306_rotate(&disp, false); // Set rotation to 0 degrees
     ssd1306_show(&disp);          // CRITICAL: Push the command to the display immediately
 }
 
 static void on_orient_flipped(void) {
-    printf("Screen: Flipped\n");
+    printf("Screen: Flipped  \n");
     ssd1306_rotate(&disp, true);  // Set rotation to 180 degrees
     ssd1306_show(&disp);          // CRITICAL: Push the command to the display immediately
 }
@@ -210,7 +210,7 @@ void ui_task(void *params) {
         ok = ssd1306_init(&disp, 128, 64, 0x3C, i2c0);
         if (!ok) vTaskDelay(pdMS_TO_TICKS(50)); // Wait 50ms before retrying
     }
-    printf("SSD1306 init(retry): %d\n", ok);
+    printf("SSD1306 init(retry): %d  \n", ok);
     
     // If display fails, delete this task (prevent crash loop).
     if (!ok) { printf("OLED init fail @0x3C I2C0\n"); vTaskDelete(NULL); }
@@ -247,14 +247,15 @@ void ui_task(void *params) {
             switch (rx_ch) {
                 case '.': strcpy(temp, "."); break;
                 case '-': strcpy(temp, "-"); break;
+                case ' ': strcpy(temp, " "); break;
             }
 
             if (rx_ch != ' ') {
                 strncat(rx_string, temp, sizeof(rx_string) - strlen(rx_string) - 1);
-                printf("Received: %s\n", temp);
-                printf("State of string: %s\n", rx_string);
+                // printf("Received: %s\n", temp); // Debug
+                // printf("State of string: %s\n", rx_string); // Debug
             } else if (last_rx_ch == ' ') {
-                printf("End and send: %s\n", rx_string);
+                // printf("End and send: %s\n", rx_string); // Debug
                 rx_string[strlen(rx_string)] = '\0';
                 ui_menu_add_rx_string(rx_string); // Send string to the scrolling text buffer
                 rx_string[0] = '\0';

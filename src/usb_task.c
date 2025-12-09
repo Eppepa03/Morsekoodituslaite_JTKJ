@@ -48,11 +48,11 @@ void usbTask(void *args) {
             if (tud_cdc_connected() && currentState == STATE_USB_SEND) {
 
                 switch (morseChar) {
-                    case DOT: strcpy(message, "."); printf("Recorded: %s\n", message); break;
-                    case DASH: strcpy(message, "-"); printf("Recorded: %s\n", message); break;
-                    case GAP_CHAR: strcpy(message, " "); printf("Recorded: Character gap\n"); break;
-                    case GAP_WORD: strcpy(message, "  "); printf("Recorded: Word gap\n"); break;
-                    case END_MSG: strcpy(message, "  \n"); printf("Recorded: End message\n"); break;
+                    case DOT: strcpy(message, "."); printf("Recorded: %s  \n", message); break;
+                    case DASH: strcpy(message, "-"); printf("Recorded: %s  \n", message); break;
+                    case GAP_CHAR: strcpy(message, " "); printf("Recorded: Character gap  \n"); break;
+                    case GAP_WORD: strcpy(message, "  "); printf("Recorded: Word gap  \n"); break;
+                    case END_MSG: strcpy(message, "  \n"); printf("Recorded: End message  \n"); break;
                 }
 
                 // Lisää message lopulliseen jonoon
@@ -87,7 +87,7 @@ void usbTask(void *args) {
                 xQueueSend(usbRxQ, &ch, portMAX_DELAY);
 
                 // Vastataan OK
-                // tud_cdc_n_write(interface, (uint8_t const *) "OK\n", 3);
+                // tud_cdc_n_write(interface, (uint8_t const *) "OK  \n", 3);
                 // tud_cdc_n_write_flush(interface);
             }
         }

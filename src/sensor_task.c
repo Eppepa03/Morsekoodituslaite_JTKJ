@@ -38,7 +38,7 @@ sensor_state sensorState = SENSOR_STATE_IDLE;
 // Main task
 void sensorTask(void *pvParameters)
 {
-    printf("[SENSOR] start\r\n");
+    printf("[SENSOR] start  \n");
     
     // sum of gz values, samples and samples below the end threshold
     float sum_gz = 0.0f;
